@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiveCore</title>
+    
+    <!-- Вот тут мы подключаем твой файл с дизайном -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Шрифт для урока -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- MathJax для математики -->
+    <script>
+        window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    startup: { typeset: false }
+};
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script defer src="https://unpkg.com/mathlive"></script>
+
+    <!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109027709', 'ym');
+
+    ym(109027709, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109027709" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+</head>
+<body>
+
+    <!-- Окно входа/регистрации -->
+<div id="auth-overlay" class="modal-overlay hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 5000; display: flex; align-items: center; justify-content: center;">
+  <div style="background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 340px; position: relative;">
+    <button id="auth-close-btn" class="close-lesson-btn" style="position: absolute; top: 20px; right: 22px; background: none; border: none; padding: 4px; cursor: pointer; font-size: 32px; line-height: 1;">&times;</button>
+    <h2 id="auth-title" style="margin: 0 0 16px 0;">Вход</h2>
+
+    <input id="auth-email" type="email" placeholder="Email" class="auth-input">
+
+<div class="auth-input-group">
+  <input id="auth-password" type="password" placeholder="Пароль" class="auth-input">
+  <button type="button" id="auth-toggle-password" class="auth-toggle-eye">
+    <svg id="auth-eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+  </button>
+</div>
+
+    <div id="auth-error" style="color: #ff4b4b; font-size: 14px; margin-bottom: 10px; display: none;"></div>
+
+    <button id="auth-submit-btn" class="auth-btn-primary" style="margin-bottom: 10px;">
+  <span class="auth-btn-text">Войти</span>
+  <div class="btn-loader-dots">
+    <span class="btn-loader-dot"></span>
+    <span class="btn-loader-dot"></span>
+    <span class="btn-loader-dot"></span>
+  </div>
+    </button>
+
+    <div id="auth-toggle" style="text-align: center; color: #1CB0F6; cursor: pointer; font-size: 14px;">Нет аккаунта? Зарегистрироваться</div>
+  </div>
+</div>
+
+<!-- Кнопка входа (плавающая, поверх интерфейса) -->
+<button id="auth-account-btn" style="position: fixed; top: 12px; right: 12px; z-index: 100; background: white; border: 2px solid #e5e5e5; border-radius: 20px; padding: 8px 16px; font-weight: 700; cursor: pointer;">Войти</button>
+    
+    <!-- Попап настройки повторения -->
+    <div id="repetition-setup-overlay" class="repetition-setup-overlay overlay-hidden" onclick="closeRepetitionSetup()">
+        <div class="repetition-setup-modal" onclick="event.stopPropagation()">
+            <div class="repetition-setup-title" id="rep-setup-title">Тема</div>
+            <div class="repetition-setup-subtopics" id="rep-setup-subtopics"></div>
+            <button type="button" class="repetition-setup-start" id="rep-setup-start" onclick="confirmRepetitionSetup()">Начать</button>
+        </div>
+    </div>
+
+    <!-- Попап урока -->
+    <div id="lesson-popup" class="popup-hidden">
+        <div class="lesson-popup-title" id="lesson-popup-title">Тема урока</div>
+        <div class="lesson-popup-tasks" id="lesson-popup-tasks">5 заданий</div>
+        <button class="lesson-popup-start" id="lesson-popup-start">Начать</button>
+    </div>
+
+    <!-- МЕНЮ -->
+    <div id="menu-view">
+        <div class="menu-container">
+            <div id="page-topics">
+                <h1>Темы</h1>
+                <div class="grid-container" id="topics-container"></div>
+            </div>
+            <div id="page-repetition" class="hidden">
+                <div class="repetition-header">
+                    <h1 class="repetition-title">Повторение</h1>
+                    <p class="repetition-subtitle">Система подберет случайные задания из всех уроков выбранной темы!</p>
+                </div>
+                <div class="repetition-list" id="repetition-topics-container"></div>
+            </div>
+            <div id="page-account" class="hidden">
+                <div class="account-header-v2">
+                    <h1 class="account-title">Аккаунт</h1>
+                    <div class="card email-card">
+                        <div class="email-card-header">
+                            <div class="email-user-info">
+                                <div class="email-icon-box">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a84ee6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect width="20" height="16" x="2" y="4" rx="2"/>
+                                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                                    </svg>
+                                </div>
+                                <div class="email-details">
+                                    <span class="label">ЭЛЕКТРОННАЯ ПОЧТА</span>
+                                    <span class="email-value" id="user-email-display">Гость</span>
+                                </div>
+                            </div>
+                            <button id="email-dots-btn" class="dots-btn" type="button" title="Опции аккаунта">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="1"/>
+                                    <circle cx="12" cy="5" r="1"/>
+                                    <circle cx="12" cy="19" r="1"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="email-actions-panel" class="email-actions-panel">
+              <div class="actions-divider">
+    <a href="privacy.html" class="legal-link">Политика конфиденциальности</a>
+    <a href="terms.html" class="legal-link">Пользовательское соглашение</a>
+    <button id="btn-logout" class="action-btn btn-logout" type="button">              
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a84ee6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                        <polyline points="16 17 21 12 16 7"/>
+                                        <line x1="21" x2="9" y1="12" y2="12"/>
+                                    </svg>
+                                    <span>Выйти из аккаунта</span>
+                                </button>
+              <button id="btn-delete" class="action-btn btn-delete" type="button">                  
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF4B4B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 6h18"/>
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                    </svg>
+                                    <span>Удалить аккаунт</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="overall-progress-wrapper" class="overall-progress-wrapper">
+                        <div class="card overall-progress-card">
+                            <div class="overall-info">
+                                <span class="label">ОБЩИЙ ПРОГРЕСС</span>
+                                <span class="overall-percentage" id="overall-percentage">0%</span>
+                            </div>
+                            <div class="mastered-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="8" r="6"/>
+                                    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                                </svg>
+                                <span id="mastered-badge-text">0 из 0 освоено</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress-table-section">
+                    <div class="table-header">
+                        <h2>Таблица прогресса</h2>
+                        <span class="tasks-count" id="total-tasks-count">0 заданий</span>
+                    </div>
+                    <div class="table-container" id="progress-table-container"></div>
+                </div>
+            </div>
+            <div id="page-path" class="hidden">
+                <button class="back-btn" onclick="navigateMenu('page-topics')">← Назад к темам</button>
+                <div class="path-header" id="path-header-block" style="display: flex; align-items: stretch; margin-bottom: 30px; border-radius: 20px; border: 3px solid; box-shadow: 0 4px 0; overflow: hidden; transition: transform 0.2s;">
+                    <div style="flex: 1; padding: 16px 20px; display: flex; align-items: center; justify-content: flex-start;">
+                        <h1 id="path-title" style="margin: 0; font-size: 22px; font-weight: 800; text-align: left; color: white;"></h1>
+                    </div>
+                    <div id="path-theory-divider" class="hidden" style="width: 2px; background-color: rgba(255,255,255,0.3);"></div>
+                    <button id="btn-topic-theory" class="hidden" onclick="openTopicTheory()" style="background: transparent; border: none; padding: 0 20px; color: white; font-size: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">📄</button>
+                </div>
+                <div class="path-container" id="path-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <nav id="bottom-nav" class="bottom-nav">
+        <button type="button" class="bottom-nav-btn bottom-nav-btn-home active" id="nav-home" onclick="navigateToMenuTab('topics')" aria-label="Темы">
+            <span class="bottom-nav-home-ring">
+                <svg class="bottom-nav-icon bottom-nav-icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/>
+                </svg>
+            </span>
+        </button>
+        <button type="button" class="bottom-nav-btn bottom-nav-btn-repeat" id="nav-repeat" onclick="navigateToMenuTab('repetition')" aria-label="Повторение">
+            <span class="bottom-nav-repeat-ring">
+                <span class="bottom-nav-repeat-circle">
+                    <svg class="bottom-nav-icon bottom-nav-icon-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 1l4 4-4 4"/>
+                        <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                        <path d="M7 23l-4-4 4-4"/>
+                        <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                    </svg>
+                </span>
+            </span>
+        </button>
+        <button type="button" class="bottom-nav-btn bottom-nav-btn-account" id="nav-account" onclick="navigateToMenuTab('account')" aria-label="Аккаунт">
+            <span class="bottom-nav-account-ring">
+                <span class="bottom-nav-account-circle">
+                    <svg class="bottom-nav-icon bottom-nav-icon-account" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </span>
+            </span>
+        </button>
+    </nav>
+
+    <!-- ОКНО УРОКА -->
+    <div id="lesson-view" class="hidden">
+        
+        <div id="cs-overlay" class="cs-overlay" onclick="closeCheatSheet()"></div>
+        <div id="cheat-sheet-wrapper" class="cheat-sheet-wrapper">
+            <div class="cs-modal" onclick="event.stopPropagation()">
+                <div class="cs-header">
+                    <button id="cs-back-btn" class="cs-back-btn" onclick="openCheatSheetMenu(true)">←</button>
+                    <div id="cs-title" class="cs-title">Шпаргалки</div>
+                    <button class="cs-close-btn" onclick="closeCheatSheet()">×</button>
+                </div>
+                <div id="cs-body" class="cs-body"></div>
+            </div>
+            <button id="cheat-sheet-btn" class="cheat-sheet-btn" onclick="toggleCheatSheet()">📄</button>
+        </div>
+
+        <header class="lesson-header">
+            <div class="close-lesson-btn" onclick="confirmCloseLesson()">✕</div>
+            <div class="lesson-path-text" id="l-path">Загрузка...</div> 
+            <button class="lesson-menu-btn" onclick="toggleLessonMenu()">⋮</button>
+            <div class="lesson-dropdown hidden" id="lesson-dropdown">
+                <div class="lesson-dropdown-title" id="ld-title">Название урока</div>
+                <div class="lesson-dropdown-info" id="ld-progress">Задание 1 из 5</div>
+                <div class="lesson-dropdown-info">Код урока: <span id="ld-code" style="font-family: monospace; font-weight: bold;">1</span></div>
+                <button class="lesson-dropdown-report" onclick="showReportModal()">Сообщить об ошибке</button>
+            </div>
+        </header>
+
+        <div id="generator-controls" style="display: none; background: #f9f9f9; padding: 10px 20px; justify-content: center; align-items: center; gap: 15px; border-bottom: 1px solid #eee; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+            <label for="chaos-level" style="font-weight: 800; color: #4b4b4b; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Хаотичность:</label>
+            <input type="number" id="chaos-level" value="2" min="1" max="10" style="width: 60px; border-radius: 12px; border: 2px solid #e5e5e5; padding: 8px; text-align: center; font-weight: 800; font-size: 16px; color: #4b4b4b; outline: none;">
+            <button onclick="regenerateTasks()" style="background: var(--lesson-accent); color: white; border: none; border-radius: 12px; padding: 8px 16px; cursor: pointer; font-weight: 800; font-size: 14px; transition: transform 0.2s;">Обновить</button>
+        </div>
+
+        <main class="lesson-main" id="l-main">
+            <h1 class="lesson-title" id="l-title"></h1>
+            <div class="character-row bounce-in delay-1">
+                <div class="example-bubble" id="l-example-bubble"></div>
+            </div>
+            <div class="bounce-in delay-2" id="l-draft-container">
+                <label class="input-label">📝 Блокнот (Черновик)</label>
+                <div class="input-group">
+                    <math-field class="lesson-input" id="l-draft" math-virtual-keyboard-policy="manual"></math-field>
+                </div>
+            </div>
+            <div class="bounce-in delay-3" id="l-answer-container">
+                <label class="input-label">🎯 Твой ответ</label>
+                <div class="input-group">
+                    <math-field class="lesson-input" id="l-answer" math-virtual-keyboard-policy="manual"></math-field>
+                </div>
+            </div>
+        </main>
+
+        <footer class="lesson-footer" id="l-footer">
+            <div class="footer-content">
+                <div class="feedback-area" id="l-feedback-area">
+                    <div class="feedback-title" id="l-feedback-title"></div>
+                    <div class="feedback-explanation" id="l-feedback-explanation"></div>
+                </div>
+                <div class="footer-buttons" id="footer-buttons">
+                    <button class="check-btn" id="btn-check" onclick="checkAnswer()">
+                        <span class="theory-arrow" onclick="openTheory(event)">←</span>
+                        <span class="theory-divider"></span>
+                        <span class="btn-text">Проверить</span>
+                    </button>
+                    <button class="check-btn hidden" id="btn-next" onclick="nextTask()">
+                        <span class="btn-text" id="btn-next-text">Дальше</span>
+                    </button>
+                    <button class="check-btn btn-secondary hidden" id="btn-retry" onclick="retryTask()">
+                        <span class="btn-text">Попробовать ещё раз</span>
+                    </button>
+                    <button class="check-btn btn-explain hidden" id="btn-explain" onclick="showExplanation()">
+                        <span class="btn-text">Объяснение</span>
+                    </button>
+                    <button class="btn-understand hidden" id="btn-close-explain" onclick="closeExplanation()">
+                        <span class="btn-text">Понятно</span>
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ОКНО ТЕОРИИ ТЕМЫ -->
+    <div id="theory-view" class="theory-view">
+        <div class="theory-content-wrapper">
+            <main class="lesson-main" style="overflow-y: auto; padding-bottom: 120px; height: 100%; box-sizing: border-box;">
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <header class="lesson-header" style="width: 100%; padding: 0;">
+                        <div class="lesson-progress-container" style="justify-content: center;">
+                            <span style="font-weight: bold; color: #afafaf;">ТЕОРИЯ ТЕМЫ</span>
+                        </div>
+                    </header>
+                    <h1 class="lesson-title" id="t-title" style="margin-top: 0;"></h1>
+                </div>
+                <div class="character-row bounce-in delay-1">
+                    <div class="example-bubble" id="t-example-bubble"></div>
+                </div>
+            </main>
+            <footer class="lesson-footer" style="position: absolute; bottom: 0; width: 100%;">
+                <div class="footer-content">
+                    <div class="footer-buttons" style="width: 100%;">
+                        <button class="check-btn" onclick="closeTheory()" style="width: 100%;">
+                            <span class="btn-text">Понятно</span>
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения (Аккаунт) -->
+    <div id="confirm-modal" class="modal-backdrop-v2 hidden">
+        <div class="modal-card-v2">
+            <div id="modal-icon-container" class="modal-icon-container"></div>
+            <h3 id="modal-title" class="modal-title"></h3>
+            <p id="modal-desc" class="modal-desc hidden"></p>
+            <div class="modal-actions">
+                <button id="modal-confirm-btn" class="modal-btn-confirm" type="button"></button>
+                <button id="modal-cancel-btn" class="modal-btn-cancel" type="button" onclick="document.getElementById('confirm-modal').classList.add('hidden')">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Всплывающий тост -->
+    <div id="toast" class="toast hidden">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Математическая клавиатура -->
+    <div id="math-keyboard">
+<div class="math-keyboard-grid">
+            <!-- Ряд 1 -->
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '1')">1</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '2')">2</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '3')">3</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '+')">+</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '-')">-</button>
+            <button class="math-key action-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'Backspace')">⌫</button>
+
+            <!-- Ряд 2 -->
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '4')">4</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '5')">5</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '6')">6</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '*')">×</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '÷')">÷</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '/')">
+                <div class="fraction-btn">
+                    <span class="num">x</span>
+                    <span class="den">y</span>
+                </div>
+            </button>
+
+            <!-- Ряд 3 -->
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '7')">7</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '8')">8</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '9')">9</button>
+            <button class="math-key has-popup" data-base="=" data-popup="≈,≠" data-hint="≈ ≠" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '=')">=</button>
+            <button class="math-key has-popup" data-base="<" data-popup="≤" data-hint="≤" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '<')">&lt;</button>
+            <button class="math-key has-popup" data-base=">" data-popup="≥" data-hint="≥" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '>')">&gt;</button>
+
+            <!-- Ряд 4 -->
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '0')">0</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '.')">,</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'x')">x</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'y')">y</button>
+            <button class="math-key action-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'Left')">←</button>
+            <button class="math-key action-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'Right')">→</button>
+
+            <!-- Ряд 5 -->
+            <button class="math-key has-popup" data-base="(" data-popup="[" data-hint="[" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '(')">(</button>
+            <button class="math-key has-popup" data-base=")" data-popup="]" data-hint="]" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, ')')">)</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '√')">√</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '^')">xⁿ</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '∞')">∞</button>
+            <button class="math-key action-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'Enter')">↵</button>
+
+            <!-- Ряд 6 (тут теперь обычная скобка { ) -->
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, 'f(x)')">f(x)</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '±')">±</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '|x|')">|x|</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '|')">|</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '_')">xᵢ</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '{')">{</button>
+
+            <!-- Ряд 7 (сюда я перенес точку с запятой) -->
+            <button class="math-key has-popup" data-base="∈" data-popup="∪,∩" data-hint="∪ ∩" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, '∈')">∈</button>
+            <button class="math-key" onmousedown="event.preventDefault()" onclick="handleKeyClick(event, ';')">;</button>
+            <button class="math-key action-key" style="grid-column: span 4;" onmousedown="event.preventDefault()" onclick="closeMathKeyboard()">Готово</button>
+</div>
+    </div>
+
+    <!-- Модальные окна -->
+    <div class="modal-overlay hidden" id="report-modal-overlay" onclick="closeReportModal()">
+        <div class="report-modal" onclick="event.stopPropagation()">
+            <div class="report-modal-title">Сообщение об ошибке</div>
+            <div class="report-modal-text">Код этого урока: <strong id="report-lesson-code" style="font-size: 1.2em; color: #ff4b4b;"></strong>.<br><br>Пожалуйста, запомните его.</div>
+            <div class="report-modal-actions">
+                <button class="report-btn-cancel" onclick="closeReportModal()">Отмена</button>
+                <button class="report-btn-go" onclick="goToReportForm()">Перейти</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="completion-modal-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease; padding: 20px; box-sizing: border-box;">
+        <div id="completion-modal-content" style="width: 100%; max-width: 400px; text-align: center; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; gap: 30px;">
+            <div>
+                <h2 style="font-size: 28px; font-weight: 900; color: #4b4b4b; margin-bottom: 10px; line-height: 1.2;">Мозговая нагрузка успешно произведена!</h2>
+                <p style="font-size: 18px; color: #afafaf; margin-bottom: 0; font-weight: 700;">делайте выводы:</p>
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <div style="background: white; border: 2px solid #1CB0F6; border-radius: 16px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 0 #1CB0F6;">
+                    <div style="background: #1CB0F6; color: white; padding: 8px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">ошибок</div>
+                    <div style="padding: 15px; font-size: 32px; font-weight: 900; color: #1CB0F6;" id="comp-errors">0</div>
+                </div>
+                <div style="background: white; border: 2px solid #1CB0F6; border-radius: 16px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 0 #1CB0F6;">
+                    <div style="background: #1CB0F6; color: white; padding: 8px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">время</div>
+                    <div style="padding: 15px; font-size: 32px; font-weight: 900; color: #1CB0F6;" id="comp-time">0:00</div>
+                </div>
+            </div>
+            <button class="check-btn" onclick="closeCompletionModal()" style="width: 100%; font-size: 18px;">
+                <span class="btn-text">Отлично</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="exit-confirm-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 4000; display: flex; flex-direction: column; justify-content: flex-end; opacity: 0; transition: opacity 0.3s ease;">
+        <div id="exit-confirm-content" style="background: white; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 30px 20px 60px 20px; margin-bottom: -30px; width: 100%; box-sizing: border-box; text-align: center; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; gap: 20px;">
+            <h2 style="font-size: 24px; font-weight: 800; color: #4b4b4b; margin: 0;">Хотите закончить урок?</h2>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 10px;">
+                <button class="check-btn" onclick="closeExitConfirmModal()" style="flex: 1; background: white; color: #1CB0F6; border: 2px solid #e5e5e5; box-shadow: 0 4px 0 #e5e5e5;">
+                    <span class="btn-text">Нет</span>
+                </button>
+                <button class="check-btn" onclick="confirmExitYes()" style="flex: 1;">
+                    <span class="btn-text">Да</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключение Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAU-9Y74bwJ5IhjKlbOCP-9jp32lRyNF_g",
+    authDomain: "fivecore-767b8.firebaseapp.com",
+    projectId: "fivecore-767b8",
+    storageBucket: "fivecore-767b8.firebasestorage.app",
+    messagingSenderId: "792235933811",
+    appId: "1:792235933811:web:460349403e3182ad2d6a06"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  window.firebaseAuth = auth;
+window.firebaseDb = db;
+window.firebaseReady = true;
+
+// Сигнал остальному коду, что Firebase готов
+window.dispatchEvent(new Event("firebase-ready"));
+</script>
+
+    <!-- Вот тут подключаем твой файл с логикой -->
+    <script src="script.js" defer></script>
+</body>
+</html>
+
