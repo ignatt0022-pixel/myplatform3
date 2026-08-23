@@ -2759,12 +2759,12 @@ try {
   // Слежение за состоянием входа — обновляем текст кнопки
   import("https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js").then(({ onAuthStateChanged }) => {
     onAuthStateChanged(auth, (user) => {
-if (user) {
-    const savedLogin = localStorage.getItem("platformLogin");
-    authAccountBtn.textContent = savedLogin ? savedLogin.split("@")[0] : "Профиль";
+      if (user) {
+    authAccountBtn.classList.add('hidden');
 } else {
     authAccountBtn.textContent = "Войти";
-}
+    authAccountBtn.classList.remove('hidden');
+      }
     });
   });
 
