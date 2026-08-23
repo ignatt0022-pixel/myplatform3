@@ -2965,7 +2965,8 @@ function updateAccountUI(user = null) {
     const currentUser = user || (window.firebaseAuth ? window.firebaseAuth.currentUser : null);
 
     if (currentUser) {
-        if (emailDisplay) emailDisplay.textContent = currentUser.email;
+        const savedLogin = localStorage.getItem("platformLogin");
+        if (emailDisplay) emailDisplay.textContent = savedLogin || 'Аккаунт';
     } else {
         if (emailDisplay) emailDisplay.textContent = 'Гость';
     }
