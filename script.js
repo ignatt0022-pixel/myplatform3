@@ -533,13 +533,8 @@ let currentTopicBaseId = null;
                 showBottomNavForAppPage('repetition');
                 currentAppState = 'repetition';
             }
-            // 3. Exit Modal (from Lesson X button)
+            // 3/4. Exit Modal (кнопка "Да" в уроке или аппаратная кнопка "Назад")
             else if (currentAppState === 'exit_modal' && (targetPage === 'path' || targetPage === 'lesson' || targetPage === 'repetition')) {
-                hideExitModalVisuals();
-                currentAppState = targetPage === 'lesson' ? 'lesson' : targetPage;
-            }
-            // 4. Exit Modal (from Hardware Back button in Lesson)
-            else if (currentAppState === 'exit_modal' && (targetPage === 'path' || targetPage === 'repetition')) {
                 if (isProgrammaticBack) {
                     isProgrammaticBack = false;
                     hideExitModalVisuals();
@@ -549,8 +544,7 @@ let currentTopicBaseId = null;
                     currentAppState = targetPage;
                 } else {
                     hideExitModalVisuals();
-                    history.pushState({ page: 'lesson' }, '');
-                    currentAppState = 'lesson';
+                    currentAppState = targetPage === 'lesson' ? 'lesson' : targetPage;
                 }
             }
             // 5. Lesson -> Path or Repetition (Hardware Back)
