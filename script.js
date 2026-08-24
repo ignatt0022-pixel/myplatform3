@@ -1137,7 +1137,7 @@ currentTopicBaseId = topic.baseId;
     pathContainer.appendChild(btn);
 });
 
-            navigateMenu('page-path', true);
+            navigateMenu('page-path');
         }
 
         let activeLessonPopup = null;
