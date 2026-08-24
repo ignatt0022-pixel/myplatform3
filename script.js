@@ -1548,11 +1548,16 @@ currentLessonFailedTasks = [];
             }
         }
 
-        function showCompletionModal() {
-            lessonCompleted = true;
+function showCompletionModal() {
+    lessonCompleted = true;
 markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks);
-          justCompletedLessonId = currentLessonId;
-            const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+  justCompletedLessonId = currentLessonId;
+
+    const guestWarning = document.getElementById('comp-guest-warning');
+    const isLoggedIn = window.firebaseAuth && window.firebaseAuth.currentUser;
+    if (guestWarning) guestWarning.style.display = isLoggedIn ? 'none' : 'flex';
+
+    const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
             const minutes = Math.floor(timeSpent / 60);
             const seconds = timeSpent % 60;
             const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
