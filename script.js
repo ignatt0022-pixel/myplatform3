@@ -690,23 +690,26 @@ let currentTopicBaseId = null;
             }
 
             isNavigating = true;
-            const isForward = targetPageId === 'page-path';
-            
-            current.style.animation = isForward ? 'slideOutLeft 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'slideOutRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
-            
-            setTimeout(() => {
-                current.classList.add('hidden');
-                current.style.animation = '';
-                
-                target.classList.remove('hidden');
-                target.style.animation = isForward ? 'slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'slideInLeft 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
-                window.scrollTo(0, 0);
-                
-                setTimeout(() => {
-                    target.style.animation = '';
-                    isNavigating = false;
-                }, 300);
-            }, 250);
+const isForward = targetPageId === 'page-path';
+
+document.body.style.minHeight = document.body.scrollHeight + 'px';
+
+current.style.animation = isForward ? 'slideOutLeft 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'slideOutRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+
+setTimeout(() => {
+    current.classList.add('hidden');
+    current.style.animation = '';
+    
+    target.classList.remove('hidden');
+    target.style.animation = isForward ? 'slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'slideInLeft 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+    window.scrollTo(0, 0);
+    
+    setTimeout(() => {
+        target.style.animation = '';
+        isNavigating = false;
+        document.body.style.minHeight = '';
+    }, 300);
+}, 250);
         }
 
         // Вспомогательная функция для затемнения цвета (для 3D тени)
