@@ -444,6 +444,10 @@
                     <div style="padding: 15px; font-size: 32px; font-weight: 900; color: #1CB0F6;" id="comp-time">0:00</div>
                 </div>
             </div>
+            <div id="comp-guest-warning" style="background: #f0f9ff; border: 2px solid #bae0fd; border-radius: 16px; padding: 16px; text-align: left; display: flex; flex-direction: column; gap: 10px;">
+                <p style="margin: 0; font-size: 14px; color: #4b4b4b; font-weight: 700; line-height: 1.4;">После закрытия вкладки ваш прогресс будет потерян. Войдите или зарегистрируйте аккаунт, чтобы сохранить его.</p>
+                <button class="auth-btn-primary" onclick="document.getElementById('auth-overlay').classList.remove('hidden')" style="font-size: 14px; padding: 12px 16px;">Войти или зарегистрироваться</button>
+            </div>
             <button class="check-btn" onclick="closeCompletionModal()" style="width: 100%; font-size: 18px;">
                 <span class="btn-text">Отлично</span>
             </button>
