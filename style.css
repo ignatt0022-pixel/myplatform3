@@ -299,15 +299,16 @@
             transform: scale(1.05);
         }
         .theory-view {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 100vh; /* fallback */
-            height: 100dvh;
-            background-color: rgba(255, 255, 255, 0);
-            z-index: 1010;
-            font-family: 'Nunito', sans-serif;
-            pointer-events: none;
-            transition: background-color 0.3s ease;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 100vh; /* fallback */
+    height: 100dvh;
+    background-color: rgba(255, 255, 255, 0);
+    z-index: 1010;
+    font-family: 'Nunito', sans-serif;
+    pointer-events: none;
+    transition: background-color 0.3s ease;
+    overflow: hidden;
         }
         .theory-view.active {
             background-color: rgba(255, 255, 255, 1);
