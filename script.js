@@ -679,20 +679,6 @@ let currentTopicBaseId = null;
             const currentVisible = pages.find(id => !document.getElementById(id).classList.contains('hidden')) || 'page-topics';
             
             if (currentVisible === targetPageId) return;
-
-            if (targetPageId === 'page-path') {
-                pages.forEach(id => {
-                    if (id !== targetPageId) document.getElementById(id).classList.add('hidden');
-                });
-                document.getElementById(targetPageId).classList.remove('hidden');
-                return;
-            }
-
-            if (targetPageId === 'page-topics') {
-                pages.forEach(id => document.getElementById(id).classList.add('hidden'));
-                document.getElementById('page-topics').classList.remove('hidden');
-                return;
-            }
             
             const currentId = currentVisible;
             const current = document.getElementById(currentId);
