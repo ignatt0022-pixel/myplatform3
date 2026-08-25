@@ -2775,6 +2775,10 @@ async function markLessonComplete(topicId, lessonId, failedTasks) {
   const db = window.firebaseDb;
   if (!auth.currentUser) return;
 
+  if (!userProgress[topicId]) userProgress[topicId] = {};
+  userProgress[topicId][lessonId] = { completed: true, failedTasks: failedTasks };
+  saveProgressToLocalCache(auth.currentUser.uid);
+
   const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js");
 
   try {
@@ -2797,6 +2801,14 @@ async function markLessonComplete(topicId, lessonId, failedTasks) {
   }
 }
 
+function saveProgressToLocalCache(uid) {
+  try {
+    localStorage.setItem("cachedProgress_" + uid, JSON.stringify(userProgress));
+  } catch (err) {
+    console.error("Ошибка сохранения кэша прогресса:", err);
+  }
+}
+
 async function loadUserProgress() {
   const auth = window.firebaseAuth;
   const db = window.firebaseDb;
@@ -2805,17 +2817,23 @@ async function loadUserProgress() {
     return;
   }
 
+  try {
+    const cached = localStorage.getItem("cachedProgress_" + auth.currentUser.uid);
+    if (cached) userProgress = JSON.parse(cached);
+  } catch (err) {
+    console.error("Ошибка чтения кэша прогресса:", err);
+  }
+
   const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js");
 
   try {
     const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
     userProgress = snap.exists() ? (snap.data().progress || {}) : {};
+    saveProgressToLocalCache(auth.currentUser.uid);
   } catch (err) {
     console.error("Ошибка загрузки прогресса:", err);
-    userProgress = {};
   }
 }
-
 onFirebaseReady(() => {
   const auth = window.firebaseAuth;
   import("https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js").then(({ onAuthStateChanged }) => {
