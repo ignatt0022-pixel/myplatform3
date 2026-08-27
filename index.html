@@ -94,7 +94,16 @@
         <div class="menu-container">
             <div id="page-topics">
                 <h1>Темы</h1>
-                <div class="grid-container" id="topics-container"></div>
+              <div class="grid-container" id="topics-container">
+    <div style="text-align:center; padding: 40px;">
+        <div class="topics-loading-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+        <div style="color: #1CB0F6; font-weight: 800; font-size: 14px;">Загрузка тем</div>
+    </div>
+</div>  
             </div>
             <div id="page-repetition" class="hidden">
                 <div class="repetition-header">
@@ -499,4 +508,3 @@ window.dispatchEvent(new Event("firebase-ready"));
     <script src="script.js" defer></script>
 </body>
 </html>
-
