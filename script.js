@@ -25,7 +25,10 @@ function onFirebaseReady(callback) {
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/10-zadanie",
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/13-zadanie.json",
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/14%20%D0%B7%D0%B0%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5",
-  "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/20-zadanie"
+
+"https://raw.githubusercontent.com/ignatt002/blait/refs/heads/main/15-zadanie.json",
+  
+"https://cdn.jsdelivr.net/gh/ignatt002/blait@main/20-zadanie"
         ];
 
         // ===================================================
@@ -46,7 +49,7 @@ function onFirebaseReady(callback) {
                 return;
             }
 
-            topicsContainer.innerHTML = '<div style="text-align:center; padding: 40px; color: #1CB0F6; font-weight: 800; font-size: 20px;">Загрузка тем...</div>';
+            topicsContainer.innerHTML = '<div style="text-align:center; padding: 40px;"><div class="topics-loading-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div style="color: #1CB0F6; font-weight: 800; font-size: 14px;">Загрузка тем</div></div>';
 
             try {
                 const fetchPromises = TOPIC_URLS.map(url => fetch(url).then(res => {
@@ -1123,9 +1126,8 @@ currentTopicBaseId = topic.baseId;
     btn.style.backgroundColor = topic.color;
     btn.style.setProperty('--shadow-color', shadowColor);
 
-    const isRegularLesson = !(lesson && (lesson.isTest || lesson.isRepetition || lesson.isGenerator));
-    const isCompleted = isRegularLesson && topic.baseId && userProgress[topic.baseId] &&
-        userProgress[topic.baseId][lessonId] && userProgress[topic.baseId][lessonId].completed;
+    const isCompleted = topic.baseId && userProgress[topic.baseId] &&
+    userProgress[topic.baseId][lessonId] && userProgress[topic.baseId][lessonId].completed;
 
     if (isCompleted) {
         renderLevelCircleCheckmark(btn, false);
@@ -1426,29 +1428,66 @@ currentLessonFailedTasks = [];
             }
 
             for (const key in task) {
-                if (key.startsWith('text')) {
-                    const textVal = task[key];
-                    if (textVal && textVal.trim() !== "") {
-                        const div = document.createElement('div');
-                        div.className = 'task-text-block';
-                        div.innerHTML = autoWrapMath(textVal);
-                        bubble.appendChild(div);
-                    }
-                } else if (key.startsWith('code')) {
-                    const codeVal = task[key];
-                    if (codeVal && codeVal.trim() !== "") {
-                        const div = document.createElement('div');
-                        div.className = 'code-box';
-                        let codeText = codeVal.trim();
-                        codeText = codeText.replace(/^\$+/, '').replace(/\$+$/, '').trim();
-                        if (!codeText.startsWith('\\[')) {
-                            codeText = `\\[ ${codeText} \\]`;
-                        }
-                        div.innerHTML = codeText.replace(/\n/g, '<br>');
-                        bubble.appendChild(div);
-                    }
+    if (key.startsWith('text')) {
+        const textVal = task[key];
+        if (textVal && textVal.trim() !== "") {
+            const div = document.createElement('div');
+            div.className = 'task-text-block';
+            div.innerHTML = autoWrapMath(textVal);
+            bubble.appendChild(div);
+        }
+    } else if (key.startsWith('code')) {
+        const codeVal = task[key];
+        if (codeVal && codeVal.trim() !== "") {
+            const div = document.createElement('div');
+            div.className = 'code-box';
+            let codeText = codeVal.trim();
+            codeText = codeText.replace(/^\$+/, '').replace(/\$+$/, '').trim();
+            if (!codeText.startsWith('\\[')) {
+                codeText = `\\[ ${codeText} \\]`;
+            }
+            div.innerHTML = codeText.replace(/\n/g, '<br>');
+            bubble.appendChild(div);
+        }
+    } else if (key.toLowerCase().startsWith('graph')) {
+    const graphCommands = task[key];
+    if (Array.isArray(graphCommands) && graphCommands.length > 0) {
+        const graphWrapper = document.createElement('div');
+        graphWrapper.className = 'graph-box-wrapper';
+        graphWrapper.style.width = '100%';
+        graphWrapper.style.aspectRatio = '1 / 1';
+        graphWrapper.style.margin = '12px 0';
+        graphWrapper.style.transition = 'aspect-ratio 0.2s ease';
+
+        const iframe = document.createElement('iframe');
+        iframe.src = 'https://ignatt002.github.io/graphics/';
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = '2px solid var(--border-color)';
+        iframe.style.borderRadius = '20px';
+        iframe.style.boxSizing = 'border-box';
+        iframe.setAttribute('title', 'graph');
+
+        const commandsStr = graphCommands.join('\n');
+
+        iframe.addEventListener('load', () => {
+            iframe.contentWindow.postMessage({ type: 'render', commands: commandsStr }, '*');
+        });
+
+        window.addEventListener('message', function handleGraphSize(event) {
+            if (event.source === iframe.contentWindow && event.data && event.data.type === 'graph-size') {
+                const ratio = event.data.ratio;
+                if (ratio && isFinite(ratio) && ratio > 0) {
+                    graphWrapper.style.aspectRatio = ratio;
                 }
             }
+        });
+
+        graphWrapper.appendChild(iframe);
+        bubble.appendChild(graphWrapper);
+    }
+}
+}
 
             // Сброс полей
             const lAnswer = document.getElementById('l-answer');
@@ -3055,19 +3094,15 @@ function renderProgressTable() {
         let completedLessons = 0;
 
         t.subtopics.forEach(sub => {
-            sub.levels.forEach(level => {
-                const lessonId = typeof level === 'object' ? level.lessonId : level;
-                const lesson = COURSE_DATA.lessons[lessonId];
-                const isRegularLesson = !(lesson && (lesson.isTest || lesson.isRepetition || lesson.isGenerator));
-                
-                if (isRegularLesson) {
-                    totalLessons++;
-                    if (t.baseId && userProgress[t.baseId] && userProgress[t.baseId][lessonId] && userProgress[t.baseId][lessonId].completed) {
-                        completedLessons++;
-                    }
-                }
-            });
-        });
+    sub.levels.forEach(level => {
+        const lessonId = typeof level === 'object' ? level.lessonId : level;
+
+        totalLessons++;
+        if (t.baseId && userProgress[t.baseId] && userProgress[t.baseId][lessonId] && userProgress[t.baseId][lessonId].completed) {
+            completedLessons++;
+        }
+    });
+});
 
         const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
         const isComplete = progress === 100 && totalLessons > 0;
@@ -3100,21 +3135,17 @@ function renderProgressTable() {
     }).join('');
 
     const totalTasksElem = document.getElementById('total-tasks-count');
-    if (totalTasksElem) {
-        let totalRegularLessons = 0;
-        COURSE_DATA.topics.forEach(t => {
-            t.subtopics.forEach(sub => {
-                sub.levels.forEach(level => {
-                    const lessonId = typeof level === 'object' ? level.lessonId : level;
-                    const lesson = COURSE_DATA.lessons[lessonId];
-                    if (!(lesson && (lesson.isTest || lesson.isRepetition || lesson.isGenerator))) {
-                        totalRegularLessons++;
-                    }
-                });
+if (totalTasksElem) {
+    let totalRegularLessons = 0;
+    COURSE_DATA.topics.forEach(t => {
+        t.subtopics.forEach(sub => {
+            sub.levels.forEach(level => {
+                totalRegularLessons++;
             });
         });
-        totalTasksElem.textContent = `${totalRegularLessons} заданий`;
-    }
+    });
+    totalTasksElem.textContent = `${totalRegularLessons} уроков`;
+}
 }
 
 function updateProgressStats() {
@@ -3170,4 +3201,4 @@ function showToast(text) {
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 2500);
-}
+               }
