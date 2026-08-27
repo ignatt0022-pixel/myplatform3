@@ -1802,3 +1802,23 @@ body {
     color: #a84ee6;
     text-decoration: underline;
 }
+
+.topics-loading-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.topics-loading-dots .dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #1CB0F6;
+    opacity: 0.35;
+    transform: scale(1);
+    animation: dotPulse 1.83s ease-in-out infinite;
+}
+.topics-loading-dots .dot:nth-child(1) { animation-delay: -0.61s; }
+.topics-loading-dots .dot:nth-child(2) { animation-delay: 0s; }
+.topics-loading-dots .dot:nth-child(3) { animation-delay: 0.61s; }
