@@ -1575,7 +1575,6 @@ function showCompletionModal() {
 markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks);
   justCompletedLessonId = currentLessonId;
   markDailyQuestProgress(currentLesson && currentLesson.isRepetition);
-  markDailyQuestProgress(currentLesson && currentLesson.isRepetition);
 
     const guestWarning = document.getElementById('comp-guest-warning');
     const isLoggedIn = window.firebaseAuth && window.firebaseAuth.currentUser;
