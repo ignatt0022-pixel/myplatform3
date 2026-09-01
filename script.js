@@ -3202,3 +3202,88 @@ function showToast(text) {
         toast.classList.add('hidden');
     }, 2500);
               }
+
+function getTodayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getDailyQuestData() {
+    try {
+        return JSON.parse(localStorage.getItem('dailyQuests_' + getTodayKey())) || { lesson: 0, repetition: 0 };
+    } catch (e) {
+        return { lesson: 0, repetition: 0 };
+    }
+}
+
+function saveDailyQuestData(data) {
+    localStorage.setItem('dailyQuests_' + getTodayKey(), JSON.stringify(data));
+}
+
+function showDailyQuestsModal() {
+    const data = getDailyQuestData();
+    const quests = [
+        {
+            title: 'Пройти 1 урок в день',
+            subtitle: 'Ежедневная цель',
+            progress: data.lesson,
+            target: 1,
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
+        },
+        {
+            title: 'Повторить одну тему',
+            subtitle: 'На странице повторения',
+            progress: data.repetition,
+            target: 1,
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>'
+        }
+    ];
+
+    const container = document.getElementById('daily-quests-list');
+    container.innerHTML = quests.map(q => {
+        const pct = Math.min(100, Math.round((q.progress / q.target) * 100));
+        const isComplete = q.progress >= q.target;
+        return `
+        <div class="table-row">
+            <div class="row-top">
+                <div class="row-left">
+                    <div class="row-icon-box ${isComplete ? 'complete' : 'incomplete'}">${q.icon}</div>
+                    <div class="row-titles">
+                        <div class="title">${q.title}</div>
+                        <div class="subtitle">${q.subtitle}</div>
+                    </div>
+                </div>
+                <div class="row-right">
+                    <span class="progress-text ${isComplete ? 'complete' : 'incomplete'}">${pct}%</span>
+                    ${isComplete ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="#eefce8" stroke="#58CC00" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>' : ''}
+                </div>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill ${isComplete ? 'complete' : 'incomplete'}" style="width: ${pct}%">
+                    <div class="specular-highlight"></div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    const overlay = document.getElementById('daily-quests-overlay');
+    overlay.classList.remove('hidden');
+    void overlay.offsetWidth;
+    overlay.style.opacity = '1';
+    document.getElementById('daily-quests-content').style.transform = 'scale(1)';
+}
+
+function closeDailyQuestsModal() {
+    const overlay = document.getElementById('daily-quests-overlay');
+    const content = document.getElementById('daily-quests-content');
+    overlay.style.opacity = '0';
+    content.style.transform = 'scale(0.9)';
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        if (currentAppState === 'lesson') {
+            history.back();
+        } else {
+            actuallyCloseLesson();
+        }
+    }, 300);
+}
