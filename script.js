@@ -1602,18 +1602,14 @@ markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks
         }
 
         function closeCompletionModal() {
-            const overlay = document.getElementById('completion-modal-overlay');
-            const content = document.getElementById('completion-modal-content');
-            overlay.style.opacity = '0';
-            content.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-                if (currentAppState === 'lesson') {
-                    history.back();
-                } else {
-                    actuallyCloseLesson();
-                }
-            }, 300);
+    const overlay = document.getElementById('completion-modal-overlay');
+    const content = document.getElementById('completion-modal-content');
+    overlay.style.opacity = '0';
+    content.style.transform = 'scale(0.9)';
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        showDailyQuestsModal();
+    }, 300);
         }
 
         function actuallyCloseLesson() {
