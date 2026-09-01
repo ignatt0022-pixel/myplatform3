@@ -1574,7 +1574,6 @@ function showCompletionModal() {
     lessonCompleted = true;
 markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks);
   justCompletedLessonId = currentLessonId;
-  markDailyQuestProgress(currentLesson && currentLesson.isRepetition);
 
     const guestWarning = document.getElementById('comp-guest-warning');
     const isLoggedIn = window.firebaseAuth && window.firebaseAuth.currentUser;
@@ -1598,15 +1597,19 @@ markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks
         }
 
         function closeCompletionModal() {
-    const overlay = document.getElementById('completion-modal-overlay');
-    const content = document.getElementById('completion-modal-content');
-    overlay.style.opacity = '0';
-    content.style.transform = 'scale(0.9)';
-    setTimeout(() => {
-        overlay.classList.add('hidden');
-        showDailyQuestsModal();
-    }, 300);
-}
+            const overlay = document.getElementById('completion-modal-overlay');
+            const content = document.getElementById('completion-modal-content');
+            overlay.style.opacity = '0';
+            content.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                if (currentAppState === 'lesson') {
+                    history.back();
+                } else {
+                    actuallyCloseLesson();
+                }
+            }, 300);
+        }
 
         function actuallyCloseLesson() {
             closeCheatSheet();
@@ -3198,105 +3201,4 @@ function showToast(text) {
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 2500);
-                      }
-
-function getTodayDateStr() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-function getDailyQuestsKey() {
-    const uid = (window.firebaseAuth && window.firebaseAuth.currentUser) ? window.firebaseAuth.currentUser.uid : 'guest';
-    return 'dailyQuests_' + uid;
-}
-
-function loadDailyQuests() {
-    const key = getDailyQuestsKey();
-    const today = getTodayDateStr();
-    let data = null;
-    try {
-        const raw = localStorage.getItem(key);
-        if (raw) data = JSON.parse(raw);
-    } catch (e) {}
-    if (!data || data.date !== today) {
-        data = { date: today, lessonDone: false, repetitionDone: false };
-        localStorage.setItem(key, JSON.stringify(data));
-    }
-    return data;
-}
-
-function markDailyQuestProgress(isRepetitionLesson) {
-    const data = loadDailyQuests();
-    data.lessonDone = true;
-    if (isRepetitionLesson) data.repetitionDone = true;
-    localStorage.setItem(getDailyQuestsKey(), JSON.stringify(data));
-}
-
-function renderDailyQuests() {
-    const data = loadDailyQuests();
-    const list = document.getElementById('daily-quests-list');
-    if (!list) return;
-
-    const quests = [
-        {
-            done: data.lessonDone,
-            title: 'Пройти 1 урок в день',
-            subtitle: 'Любой урок платформы',
-            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`
-        },
-        {
-            done: data.repetitionDone,
-            title: 'Повторить тему',
-            subtitle: 'На странице «Повторение»',
-            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>`
-        }
-    ];
-
-    list.innerHTML = quests.map(q => `
-        <div class="table-row">
-            <div class="row-top">
-                <div class="row-left">
-                    <div class="row-icon-box ${q.done ? 'complete' : 'incomplete'}">
-                        ${q.icon}
-                    </div>
-                    <div class="row-titles">
-                        <div class="title">${q.title}</div>
-                        <div class="subtitle">${q.subtitle}</div>
-                    </div>
-                </div>
-                <div class="row-right">
-                    ${q.done
-                        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="#eefce8" stroke="#58CC00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>`
-                        : `<span class="progress-text incomplete">0%</span>`
-                    }
-                </div>
-            </div>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill ${q.done ? 'complete' : 'incomplete'}" style="width: ${q.done ? 100 : 0}%">
-                    <div class="specular-highlight"></div>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function showDailyQuestsModal() {
-    renderDailyQuests();
-    const overlay = document.getElementById('daily-quests-overlay');
-    const content = document.getElementById('daily-quests-content');
-    overlay.classList.remove('hidden');
-    void overlay.offsetWidth;
-    overlay.style.opacity = '1';
-    content.style.transform = 'scale(1)';
-}
-
-function closeDailyQuestsModal() {
-    const overlay = document.getElementById('daily-quests-overlay');
-    const content = document.getElementById('daily-quests-content');
-    overlay.style.opacity = '0';
-    content.style.transform = 'scale(0.9)';
-    setTimeout(() => {
-        overlay.classList.add('hidden');
-        actuallyCloseLesson();
-    }, 300);
               }
