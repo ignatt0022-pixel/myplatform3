@@ -1575,6 +1575,11 @@ function showCompletionModal() {
 markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks);
   justCompletedLessonId = currentLessonId;
 
+    const questData = getDailyQuestData();
+    questData.lesson = 1;
+    if (currentLesson && currentLesson.isRepetition) questData.repetition = 1;
+    saveDailyQuestData(questData);
+
     const guestWarning = document.getElementById('comp-guest-warning');
     const isLoggedIn = window.firebaseAuth && window.firebaseAuth.currentUser;
     if (guestWarning) guestWarning.style.display = isLoggedIn ? 'none' : 'flex';
