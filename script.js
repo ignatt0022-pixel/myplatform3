@@ -14,6 +14,14 @@ function onFirebaseReady(callback) {
             lessons: {}
         };
 
+// Проверка: является ли элемент levels заголовком-оглавлением, а не уроком
+        function isSectionHeader(level) {
+            return typeof level === 'string' && level.trim().startsWith('###');
+        }
+        function getSectionHeaderText(level) {
+            return level.trim().slice(3).trim();
+        }
+
         // ===================================================
         // СЮДА ВСТАВЛЯТЬ ССЫЛКИ НА RAW ФАЙЛЫ С ГИТХАБА (в формате JSON)
         // Пример: "https://raw.githubusercontent.com/username/repo/main/topic1.json"
@@ -323,11 +331,11 @@ let currentTopicBaseId = null;
                         const level = regularLevels[i];
                         finalLevels.push(level);
                         
-                        const levelId = typeof level === 'object' ? level.lessonId : level;
+              const levelId = typeof level === 'object' ? level.lessonId : level;
                         const lesson = COURSE_DATA.lessons[levelId];
-                        if (!lesson || !lesson.isTest) {
+                        if (!isSectionHeader(level) && (!lesson || !lesson.isTest)) {
                             regCount++;
-                        }
+                        }          
                         
                         let toInsert = pendingPlaced.filter(l => {
                             const lId = typeof l === 'object' ? l.lessonId : l;
@@ -745,7 +753,8 @@ setTimeout(() => {
             '10 задание': { subtitle: 'Вероятности', icon: 'dices' },
             '11 задание': { subtitle: 'Графики функций', icon: 'line-chart' },
             '13 задание': { subtitle: 'Решение неравенств', icon: 'greater-equal' },
-            '14 задание': { subtitle: 'Прогрессии', icon: 'trending-up' }
+            '14 задание': { subtitle: 'Прогрессии', icon: 'trending-up' },
+'15 задание': { subtitle: 'Треугольники', icon: 'triangle' }
         };
 
         function getRepetitionTopicMeta(topic) {
@@ -766,7 +775,8 @@ setTimeout(() => {
                 dices: '<svg class="repetition-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
                 'line-chart': '<svg class="repetition-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-6 4 3 5-8"/></svg>',
                 'greater-equal': '<svg class="repetition-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l14 5-14 5"/><path d="M5 20l14-5"/></svg>',
-                'trending-up': '<svg class="repetition-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-10"/><path d="M14 5h7v7"/></svg>'
+                'trending-up': '<svg class="repetition-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-10"/><path d="M14 5h7v7"/></svg>',
+                triangle: '<svg class="repetition-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4 L4 20 L20 20 Z"/><path d="M4 15 L8 15 L8 20"/></svg>'
             };
             return icons[iconName] || icons.calculator;
         }
@@ -1091,9 +1101,19 @@ currentTopicBaseId = topic.baseId;
 
             const pathContainer = document.getElementById('path-container');
             pathContainer.innerHTML = '';
+            pathContainer.classList.toggle('starts-with-divider', subtopic.levels.length > 0 && isSectionHeader(subtopic.levels[0]));
 
             let displayCounter = 1;
           subtopic.levels.forEach((level, index) => {
+if (isSectionHeader(level)) {
+        const divider = document.createElement('div');
+        divider.className = 'path-section-divider';
+        const span = document.createElement('span');
+        span.innerText = getSectionHeaderText(level);
+        divider.appendChild(span);
+        pathContainer.appendChild(divider);
+        return;
+    }
     const lessonId = typeof level === 'object' ? level.lessonId : level;
     const lesson = COURSE_DATA.lessons[lessonId];
     
@@ -1452,42 +1472,9 @@ currentLessonFailedTasks = [];
     } else if (key.toLowerCase().startsWith('graph')) {
     const graphCommands = task[key];
     if (Array.isArray(graphCommands) && graphCommands.length > 0) {
-        const graphWrapper = document.createElement('div');
-        graphWrapper.className = 'graph-box-wrapper';
-        graphWrapper.style.width = '100%';
-        graphWrapper.style.aspectRatio = '1 / 1';
-        graphWrapper.style.margin = '12px 0';
-        graphWrapper.style.transition = 'aspect-ratio 0.2s ease';
-
-        const iframe = document.createElement('iframe');
-        iframe.src = 'https://ignatt002.github.io/graphics/';
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = '2px solid var(--border-color)';
-        iframe.style.borderRadius = '20px';
-        iframe.style.boxSizing = 'border-box';
-        iframe.setAttribute('title', 'graph');
-
-        const commandsStr = graphCommands.join('\n');
-
-        iframe.addEventListener('load', () => {
-            iframe.contentWindow.postMessage({ type: 'render', commands: commandsStr }, '*');
-        });
-
-        window.addEventListener('message', function handleGraphSize(event) {
-            if (event.source === iframe.contentWindow && event.data && event.data.type === 'graph-size') {
-                const ratio = event.data.ratio;
-                if (ratio && isFinite(ratio) && ratio > 0) {
-                    graphWrapper.style.aspectRatio = ratio;
-                }
-            }
-        });
-
-        graphWrapper.appendChild(iframe);
-        bubble.appendChild(graphWrapper);
+        bubble.appendChild(createGraphBox(graphCommands));
     }
-}
-}
+}}
 
             // Сброс полей
             const lAnswer = document.getElementById('l-answer');
@@ -1657,9 +1644,12 @@ markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks
             
             const theory = (currentLesson && currentLesson.theory) || subtopicTheory || (currentTopic && currentTopic.theory);
             
-            if (!currentLesson || !showTheoryBtn || !theory) return;
-            
-            document.getElementById('t-title').innerText = currentLesson.title;
+if (!currentLesson || !showTheoryBtn || !theory) return;
+    
+    const theoryTitle = (currentTopic && currentSubtopicIndex !== null && currentTopic.subtopics[currentSubtopicIndex])
+        ? currentTopic.subtopics[currentSubtopicIndex].title
+        : (currentTopic ? currentTopic.title : currentLesson.title);
+    document.getElementById('t-title').innerText = theoryTitle;
             
             const bubble = document.getElementById('t-example-bubble');
             bubble.innerHTML = '';
@@ -1685,6 +1675,11 @@ markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks
                         }
                         div.innerHTML = codeText.replace(/\n/g, '<br>');
                         bubble.appendChild(div);
+                    }
+                } else if (key.toLowerCase().startsWith('graph')) {
+                    const graphCommands = theory[key];
+                    if (Array.isArray(graphCommands) && graphCommands.length > 0) {
+                        bubble.appendChild(createGraphBox(graphCommands));
                     }
                 }
             }
@@ -1737,6 +1732,11 @@ markLessonComplete(currentTopicBaseId, currentLessonId, currentLessonFailedTasks
                         }
                         div.innerHTML = codeText.replace(/\n/g, '<br>');
                         bubble.appendChild(div);
+                    }
+                } else if (key.toLowerCase().startsWith('graph')) {
+                    const graphCommands = theory[key];
+                    if (Array.isArray(graphCommands) && graphCommands.length > 0) {
+                        bubble.appendChild(createGraphBox(graphCommands));
                     }
                 }
             }
@@ -2718,6 +2718,8 @@ togglePasswordBtn.addEventListener("click", () => {
     authSubmitBtn.querySelector(".auth-btn-text").textContent = isRegisterMode ? "Зарегистрироваться" : "Войти";
     authToggle.textContent = isRegisterMode ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться";
     authError.style.display = "none";
+    document.getElementById('auth-consent-group').classList.toggle('hidden', !isRegisterMode);
+    document.getElementById('auth-consent-checkbox').checked = false;
   });
 
   // Отправка формы
@@ -2730,6 +2732,14 @@ authSubmitBtn.disabled = true;
 
     if (!email || !password) {
     authError.textContent = "Заполните все поля";
+    authError.style.display = "block";
+    authSubmitBtn.classList.remove("loading");
+    authSubmitBtn.disabled = false;
+    return;
+    }
+
+if (isRegisterMode && !document.getElementById('auth-consent-checkbox').checked) {
+    authError.textContent = "Нужно принять пользовательское соглашение и политику конфиденциальности";
     authError.style.display = "block";
     authSubmitBtn.classList.remove("loading");
     authSubmitBtn.disabled = false;
@@ -3244,7 +3254,8 @@ function showDailyQuestsModal() {
     container.innerHTML = quests.map(q => {
         const pct = Math.min(100, Math.round((q.progress / q.target) * 100));
         const isComplete = q.progress >= q.target;
-        return `
+        const startPct = getSavedQuestBarPct(q.title);
+return `
         <div class="table-row">
             <div class="row-top">
                 <div class="row-left">
@@ -3260,7 +3271,7 @@ function showDailyQuestsModal() {
                 </div>
             </div>
             <div class="progress-bar-bg">
-                <div class="progress-bar-fill ${isComplete ? 'complete' : 'incomplete'}" style="width: ${pct}%">
+                <div class="progress-bar-fill ${isComplete ? 'complete' : 'incomplete'}" style="width: ${startPct}%" data-pct="${pct}" data-title="${q.title}">
                     <div class="specular-highlight"></div>
                 </div>
             </div>
@@ -3272,8 +3283,33 @@ function showDailyQuestsModal() {
     void overlay.offsetWidth;
     overlay.style.opacity = '1';
     document.getElementById('daily-quests-content').style.transform = 'scale(1)';
+
+    setTimeout(() => {
+        container.querySelectorAll('.progress-bar-fill').forEach(bar => {
+            const finalPct = bar.getAttribute('data-pct');
+            bar.style.width = finalPct + '%';
+            saveQuestBarPct(bar.getAttribute('data-title'), finalPct);
+        });
+    }, 150);
 }
 
+function getSavedQuestBarPct(title) {
+    try {
+        const saved = JSON.parse(localStorage.getItem('dailyQuestsBarPct_' + getTodayKey())) || {};
+        return saved[title] || 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+function saveQuestBarPct(title, pct) {
+    let saved = {};
+    try {
+        saved = JSON.parse(localStorage.getItem('dailyQuestsBarPct_' + getTodayKey())) || {};
+    } catch (e) {}
+    saved[title] = pct;
+    localStorage.setItem('dailyQuestsBarPct_' + getTodayKey(), JSON.stringify(saved));
+}
 function closeDailyQuestsModal() {
     const overlay = document.getElementById('daily-quests-overlay');
     const content = document.getElementById('daily-quests-content');
@@ -3287,4 +3323,40 @@ function closeDailyQuestsModal() {
             actuallyCloseLesson();
         }
     }, 300);
-}
+          }
+
+function createGraphBox(graphCommands) {
+    const graphWrapper = document.createElement('div');
+    graphWrapper.className = 'graph-box-wrapper';
+    graphWrapper.style.width = '100%';
+    graphWrapper.style.aspectRatio = '1 / 1';
+    graphWrapper.style.margin = '12px 0';
+    graphWrapper.style.transition = 'aspect-ratio 0.2s ease';
+
+    const iframe = document.createElement('iframe');
+    iframe.src = 'https://ignatt002.github.io/graphics/';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = '2px solid var(--border-color)';
+    iframe.style.borderRadius = '20px';
+    iframe.style.boxSizing = 'border-box';
+    iframe.setAttribute('title', 'graph');
+
+    const commandsStr = graphCommands.join('\n');
+
+    iframe.addEventListener('load', () => {
+        iframe.contentWindow.postMessage({ type: 'render', commands: commandsStr }, '*');
+    });
+
+    window.addEventListener('message', function handleGraphSize(event) {
+        if (event.source === iframe.contentWindow && event.data && event.data.type === 'graph-size') {
+            const ratio = event.data.ratio;
+            if (ratio && isFinite(ratio) && ratio > 0) {
+                graphWrapper.style.aspectRatio = ratio;
+            }
+        }
+    });
+
+    graphWrapper.appendChild(iframe);
+    return graphWrapper;
+                          }
