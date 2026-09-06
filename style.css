@@ -238,6 +238,41 @@ body {
         }
 
         .path-container { display: flex; flex-direction: column; align-items: center; padding: 40px 0 80px 0; gap: 10px; }
+
+.path-section-divider {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+            margin: 20px 0 10px 0;
+            gap: 14px;
+        }
+
+.path-section-divider:first-child {
+            margin-top: 0;
+        }
+        .path-container.starts-with-divider {
+            padding-top: 10px;
+        }
+
+        .path-section-divider::before,
+        .path-section-divider::after {
+            content: '';
+            flex: 1;
+            height: 2px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+        }
+        .path-section-divider span {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 14px;
+            color: #afafaf;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            padding: 0 2px;
+        }
         
         .level-circle { 
             position: relative;
@@ -1284,7 +1319,7 @@ body {
     height: 100%;
     border-radius: 9999px;
     position: relative;
-    transition: width 0.5s ease;
+    transition: width 2.5s ease;
 }
 
 .progress-bar-fill.complete {
@@ -1587,6 +1622,13 @@ body {
             border-color: #be6cf1;
         }
 
+#auth-consent-group .repetition-setup-checkbox:checked + .repetition-setup-checkmark {
+            background: var(--lesson-accent);
+            border-color: var(--lesson-accent);
+        }
+        #auth-consent-group .repetition-setup-checkbox-wrap:hover .repetition-setup-checkmark {
+            border-color: var(--lesson-accent);
+        }
         .repetition-setup-checkbox:checked + .repetition-setup-checkmark::after {
             content: '✓';
         }
