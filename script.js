@@ -586,6 +586,12 @@ let currentTopicBaseId = null;
                 document.getElementById('lesson-dropdown').classList.remove('hidden');
                 currentAppState = 'lesson_dropdown';
             }
+
+// 8b. Report Modal (открыт напрямую из объяснения, без dropdown)
+            else if (currentAppState === 'report_modal' && targetPage === 'lesson') {
+                document.getElementById('report-modal-overlay').classList.add('hidden');
+                currentAppState = 'lesson';
+            }
             // 9. Path -> Topics
             else if (currentAppState === 'path' && targetPage === 'topics') {
                 navigateMenu('page-topics', true);
@@ -1431,9 +1437,10 @@ currentLessonFailedTasks = [];
             document.getElementById('l-main').scrollTop = 0;
             const task = currentLesson.tasks[currentTaskIndex];
 
-            // Заголовок и путь
-            const taskCountText = currentLesson.isGenerator ? ` (Задание ${currentTaskIndex + 1})` : (currentLesson.tasks.length > 1 ? ` (Задание ${currentTaskIndex + 1} из ${currentLesson.tasks.length})` : '');
-            document.getElementById('l-path').innerText = currentLesson.path + taskCountText;
+            // Прогресс-бар вместо текста пути
+            const totalTasks = currentLesson.tasks.length;
+            const progressPercent = totalTasks > 0 ? Math.min(100, (currentTaskIndex / totalTasks) * 100) : 0;
+            document.getElementById('l-progress-fill').style.width = progressPercent + '%';
             document.getElementById('l-title').innerText = currentLesson.title;
 
             // Динамическая генерация текста и кода
@@ -1791,7 +1798,7 @@ if (!currentLesson || !showTheoryBtn || !theory) return;
         document.addEventListener('click', (e) => {
             const dropdown = document.getElementById('lesson-dropdown');
             const menuBtn = document.querySelector('.lesson-menu-btn');
-            if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && e.target !== menuBtn) {
+            if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !menuBtn.contains(e.target)) {
                 dropdown.classList.add('hidden');
                 if (currentAppState === 'lesson_dropdown') {
                     history.back();
@@ -1821,10 +1828,33 @@ if (!currentLesson || !showTheoryBtn || !theory) return;
         }
 
         function goToReportForm() {
-            window.open('https://docs.google.com/forms/d/e/1FAIpQLSe9asK8LpTdcIIzj6oqX0HRHvxe-o2qU6Gfu1mG4CuaZLzj6A/viewform', '_blank');
+            window.open('https://forms.gle/r1MJEc5GiBF64bHD6', '_blank');
             closeReportModal();
         }
+function copyLessonCode() {
+            const code = document.getElementById('report-lesson-code').innerText;
+            if (!code) return;
 
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code)
+                    .then(() => showToast('Код скопирован!'))
+                    .catch(() => showToast('Не удалось скопировать'));
+            } else {
+                const temp = document.createElement('textarea');
+                temp.value = code;
+                temp.style.position = 'fixed';
+                temp.style.opacity = '0';
+                document.body.appendChild(temp);
+                temp.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Код скопирован!');
+                } catch (e) {
+                    showToast('Не удалось скопировать');
+                }
+                document.body.removeChild(temp);
+            }
+        }
         function resetErrorState() {
             const lAnswer = document.getElementById('l-answer');
             lAnswer.style.borderColor = '';
@@ -1978,6 +2008,11 @@ if (!currentLesson || !showTheoryBtn || !theory) return;
                         lAnswer.style.backgroundColor = "var(--success-bg)";
                         lAnswer.style.color = "var(--success-shadow)";
                         lAnswer.disabled = true;
+
+                        if (!currentLesson.isGenerator && currentTaskIndex === currentLesson.tasks.length - 1) {
+                            const progressFill = document.getElementById('l-progress-fill');
+                            if (progressFill) progressFill.style.width = '100%';
+                        }
                     } else {
                         // Ошибка
                         footer.className = 'lesson-footer state-error';
@@ -2072,6 +2107,8 @@ if (!currentLesson || !showTheoryBtn || !theory) return;
                 }
             } else {
                 currentTaskIndex++;
+                const progressFill = document.getElementById('l-progress-fill');
+                if (progressFill) progressFill.style.width = '100%';
                 showCompletionModal();
             }
         }
@@ -2166,6 +2203,9 @@ if (!currentLesson || !showTheoryBtn || !theory) return;
                 void btnCloseExplain.offsetWidth; // trigger reflow
                 btnCloseExplain.classList.add('btn-animated');
                 btnCloseExplain.style.animationDelay = `${delayCount * 0.1}s`;
+btnCloseExplain.addEventListener('animationend', () => {
+                    btnCloseExplain.classList.remove('btn-animated');
+                }, { once: true });
                 
                 // Запускаем анимацию высоты до 100vh и плавно показываем новый контент
                 footer.style.height = '100vh';
@@ -2799,9 +2839,11 @@ try {
     onAuthStateChanged(auth, (user) => {
       if (user) {
     authAccountBtn.classList.add('hidden');
+    document.getElementById('account-btn-divider')?.classList.add('hidden');
 } else {
     authAccountBtn.textContent = "Войти";
     authAccountBtn.classList.remove('hidden');
+    document.getElementById('account-btn-divider')?.classList.remove('hidden');
       }
     });
   });
@@ -3359,4 +3401,4 @@ function createGraphBox(graphCommands) {
 
     graphWrapper.appendChild(iframe);
     return graphWrapper;
-                          }
+      }
