@@ -306,10 +306,20 @@
                 <div class="example-bubble" id="l-example-bubble"></div>
             </div>
             <div class="bounce-in delay-2" id="l-draft-container">
-                <label class="input-label">📝 Блокнот (Черновик)</label>
-                <div class="input-group">
-                    <math-field class="lesson-input" id="l-draft" math-virtual-keyboard-policy="manual"></math-field>
-                </div>
+    <div class="draft-header-row">
+        <label class="input-label">📝 Блокнот (Черновик)</label>
+        <div class="draft-toolbar" id="draft-toolbar">
+            <button type="button" class="draft-tool-btn" id="draft-mode-toggle" onclick="toggleDraftDrawMode()" title="Текст / Рисование">🖊</button>
+            <button type="button" class="draft-tool-btn hidden active" id="draft-tool-pen" onclick="setDraftTool('pen')" title="Кисть">✏️</button>
+            <button type="button" class="draft-tool-btn hidden" id="draft-tool-eraser" onclick="setDraftTool('eraser')" title="Ластик">🧽</button>
+            <input type="range" id="draft-thickness" class="draft-thickness-slider hidden" min="1" max="20" value="3" oninput="setDraftThickness(this.value)">
+            <button type="button" class="draft-tool-btn hidden" id="draft-clear-btn" onclick="clearDraftCanvas()" title="Очистить">🗑</button>
+        </div>
+    </div>
+    <div class="input-group" id="l-draft-input-group">
+        <math-field class="lesson-input" id="l-draft" math-virtual-keyboard-policy="manual"></math-field>
+        <canvas id="l-draft-canvas" class="draft-canvas hidden"></canvas>
+    </div>
             </div>
             <div class="bounce-in delay-3" id="l-answer-container">
                 <label class="input-label">🎯 Твой ответ</label>
