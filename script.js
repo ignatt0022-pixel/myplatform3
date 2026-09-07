@@ -1484,6 +1484,7 @@ currentLessonFailedTasks = [];
 }}
 
             // Сброс полей
+            if (typeof resetDraftCanvasForNewTask === 'function') resetDraftCanvasForNewTask();
             const lAnswer = document.getElementById('l-answer');
             const lDraft = document.getElementById('l-draft');
             const lAnswerContainer = document.getElementById('l-answer-container');
