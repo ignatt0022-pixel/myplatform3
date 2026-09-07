@@ -92,6 +92,11 @@ body {
         
         .back-btn { background: none; border: none; color: #afafaf; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; transition: color 0.2s, transform 0.2s; }
         .back-btn:hover { color: #777; transform: translateX(-5px); }
+        body:has(#auth-account-btn:not(.hidden)) .back-btn {
+            display: block;
+            margin-right: auto;
+            margin-left: 0;
+        }
         h1 { color: #4b4b4b; margin-bottom: 30px; }
 
         .grid-container { display: grid; gap: 15px; }
@@ -381,7 +386,17 @@ body {
         .lesson-header { padding: 20px; display: flex; align-items: center; gap: 15px; max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; transition: margin-top 0.3s ease, opacity 0.3s ease; }
         body.keyboard-open .lesson-header { margin-top: -100px; opacity: 0; pointer-events: none; }
         .lesson-path-text { flex: 1; font-weight: 800; color: #afafaf; text-transform: uppercase; font-size: 14px; letter-spacing: 1px;}
-        .close-lesson-btn { color: #afafaf; font-size: 24px; font-weight: 900; cursor: pointer; transition: color 0.2s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+.lesson-progress-bar-wrap { flex: 1; }
+        .lesson-progress-bar-wrap .progress-bar-bg {
+            height: 14px;
+            margin-top: 0;
+        }
+        .lesson-progress-bar-wrap .specular-highlight {
+            top: 4px;
+            height: 3px;
+        }
+        .close-lesson-btn { color: #afafaf; font-size: 24px; font-weight: 900; cursor: pointer; transition: color 0.2s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; top: -1.5px;}
         .close-lesson-btn:hover { color: var(--text-color); transform: scale(1.1); }
         .close-lesson-btn:active { transform: scale(0.9); }
 
@@ -492,6 +507,26 @@ body {
         
         .has-theory .theory-arrow, .has-theory .theory-divider {
             display: flex;
+        }
+
+        .explain-report-flag {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            align-self: stretch;
+            cursor: pointer;
+        }
+        .explain-report-flag:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        .explain-report-divider {
+            display: flex;
+            width: 2px;
+            background: var(--border-color);
+            opacity: 1;
+            align-self: stretch;
+            margin: 10px 0;
         }
 
         .btn-secondary { background-color: #ffffff; color: var(--error-color); box-shadow: 0 5px 0 #e5e5e5; border: 2px solid #e5e5e5; }
@@ -697,6 +732,36 @@ body {
         .report-btn-go { background: #58cc02; color: white; box-shadow: 0 4px 0 #46a302; }
         .report-btn-go:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #46a302; }
         .report-btn-go:active { transform: translateY(4px) !important; box-shadow: 0 0 0 transparent !important; }
+
+.report-copy-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #f7f7f7;
+            color: #4b4b4b;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 0 var(--border-color);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s, background-color 0.2s;
+        }
+        .report-copy-btn:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 var(--border-color);
+        }
+        .report-copy-btn:active {
+            transform: translateY(4px) !important;
+            box-shadow: 0 0 0 transparent !important;
+        }
         
         .explanation-correct-answer {
             color: #58cc02; font-weight: 800;
@@ -1889,3 +1954,4 @@ body {
     flex-direction: column;
     gap: 16px;
 }
+ 
