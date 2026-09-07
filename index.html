@@ -78,8 +78,17 @@
   </div>
 </div>
 
-<!-- Кнопка входа (плавающая, поверх интерфейса) -->
-<button id="auth-account-btn" style="position: fixed; top: 12px; right: 12px; z-index: 100; background: white; border: 2px solid #e5e5e5; border-radius: 20px; padding: 8px 16px; font-weight: 700; cursor: pointer;">Войти</button>
+<!-- Кнопка входа + флажок (плавающая, поверх интерфейса) -->
+<div id="account-btn-group" style="position: fixed; top: 12px; right: 12px; z-index: 100; display: flex; align-items: stretch; background: white; border: 2px solid #e5e5e5; border-radius: 20px; overflow: hidden;">
+    <button id="global-report-btn" type="button" onclick="goToReportForm()" style="background: none; border: none; padding: 8px 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #afafaf;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 22V3"/>
+            <path d="M4 3h14l-3 5 3 5H4"/>
+        </svg>
+    </button>
+    <div id="account-btn-divider" style="width: 2px; background: #e5e5e5;"></div>
+    <button id="auth-account-btn" style="background: white; border: none; padding: 8px 16px; font-weight: 700; cursor: pointer;">Войти</button>
+</div>
     
     <!-- Попап настройки повторения -->
     <div id="repetition-setup-overlay" class="repetition-setup-overlay overlay-hidden" onclick="closeRepetitionSetup()">
@@ -199,7 +208,15 @@
                         <h1 id="path-title" style="margin: 0; font-size: 22px; font-weight: 800; text-align: left; color: white;"></h1>
                     </div>
                     <div id="path-theory-divider" class="hidden" style="width: 2px; background-color: rgba(255,255,255,0.3);"></div>
-                    <button id="btn-topic-theory" class="hidden" onclick="openTopicTheory()" style="background: transparent; border: none; padding: 0 20px; color: white; font-size: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">📄</button>
+                    <button id="btn-topic-theory" class="hidden" onclick="openTopicTheory()" style="background: transparent; border: none; padding:  20px; color: white; cursor: pointer; 0: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 3h13a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4z"/>
+        <path d="M4 3v18"/>
+        <line x1="8" y1="7" x2="15" y2="7"/>
+        <line x1="8" y1="11" x2="15" y2="11"/>
+        <line x1="8" y1="15" x2="12" y2="15"/>
+    </svg>
+</button>
                 </div>
                 <div class="path-container" id="path-container"></div>
             </div>
@@ -256,8 +273,19 @@
 
         <header class="lesson-header">
             <div class="close-lesson-btn" onclick="confirmCloseLesson()">✕</div>
-            <div class="lesson-path-text" id="l-path">Загрузка...</div> 
-            <button class="lesson-menu-btn" onclick="toggleLessonMenu()">⋮</button>
+            <div class="lesson-progress-bar-wrap" id="l-progress-wrap">
+    <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="l-progress-fill" style="background-color: var(--lesson-accent); width: 0%;">
+            <div class="specular-highlight"></div>
+        </div>
+    </div>
+</div> 
+            <button class="lesson-menu-btn" onclick="toggleLessonMenu()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 22V3"/>
+        <path d="M4 3h14l-3 5 3 5H4"/>
+    </svg>
+</button>
             <div class="lesson-dropdown hidden" id="lesson-dropdown">
                 <div class="lesson-dropdown-title" id="ld-title">Название урока</div>
                 <div class="lesson-dropdown-info" id="ld-progress">Задание 1 из 5</div>
@@ -298,11 +326,19 @@
                     <div class="feedback-explanation" id="l-feedback-explanation"></div>
                 </div>
                 <div class="footer-buttons" id="footer-buttons">
-                    <button class="check-btn" id="btn-check" onclick="checkAnswer()">
-                        <span class="theory-arrow" onclick="openTheory(event)">←</span>
-                        <span class="theory-divider"></span>
-                        <span class="btn-text">Проверить</span>
-                    </button>
+              <button class="check-btn" id="btn-check" onclick="checkAnswer()">
+    <span class="theory-arrow" onclick="openTheory(event)">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 3h13a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4z"/>
+            <path d="M4 3v18"/>
+            <line x1="8" y1="7" x2="15" y2="7"/>
+            <line x1="8" y1="11" x2="15" y2="11"/>
+            <line x1="8" y1="15" x2="12" y2="15"/>
+        </svg>
+    </span>
+    <span class="theory-divider"></span>
+    <span class="btn-text">Проверить</span>
+</button>      
                     <button class="check-btn hidden" id="btn-next" onclick="nextTask()">
                         <span class="btn-text" id="btn-next-text">Дальше</span>
                     </button>
@@ -312,9 +348,16 @@
                     <button class="check-btn btn-explain hidden" id="btn-explain" onclick="showExplanation()">
                         <span class="btn-text">Объяснение</span>
                     </button>
-                    <button class="btn-understand hidden" id="btn-close-explain" onclick="closeExplanation()">
-                        <span class="btn-text">Понятно</span>
-                    </button>
+              <button class="btn-understand hidden" id="btn-close-explain" onclick="closeExplanation()">
+    <span class="explain-report-flag" onclick="event.stopPropagation(); showReportModal();">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 22V3"/>
+            <path d="M4 3h14l-3 5 3 5H4"/>
+        </svg>
+    </span>
+    <span class="explain-report-divider"></span>
+    <span class="btn-text">Понятно</span>
+</button>      
                 </div>
             </div>
         </footer>
@@ -435,15 +478,22 @@
 
     <!-- Модальные окна -->
     <div class="modal-overlay hidden" id="report-modal-overlay" onclick="closeReportModal()">
-        <div class="report-modal" onclick="event.stopPropagation()">
-            <div class="report-modal-title">Сообщение об ошибке</div>
-            <div class="report-modal-text">Код этого урока: <strong id="report-lesson-code" style="font-size: 1.2em; color: #ff4b4b;"></strong>.<br><br>Пожалуйста, запомните его.</div>
-            <div class="report-modal-actions">
-                <button class="report-btn-cancel" onclick="closeReportModal()">Отмена</button>
-                <button class="report-btn-go" onclick="goToReportForm()">Перейти</button>
-            </div>
+    <div class="report-modal" onclick="event.stopPropagation()">
+        <div class="report-modal-title">Сообщение об ошибке</div>
+        <div class="report-modal-text">Код этого урока: <strong id="report-lesson-code" style="font-size: 1.2em; color: #ff4b4b;"></strong>.<br><br>Пожалуйста, скопируйте его.</div>
+        <button type="button" class="report-copy-btn" onclick="copyLessonCode()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>Скопировать код</span>
+        </button>
+        <div class="report-modal-actions">
+            <button class="report-btn-cancel" onclick="closeReportModal()">Отмена</button>
+            <button class="report-btn-go" onclick="goToReportForm()">Перейти</button>
         </div>
     </div>
+</div>
 
     <div id="completion-modal-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease; padding: 20px; box-sizing: border-box;">
         <div id="completion-modal-content" style="width: 100%; max-width: 400px; text-align: center; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; gap: 30px;">
