@@ -1955,22 +1955,49 @@ body {
     gap: 16px;
 }
  
-.draft-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 6px;
+.draft-input-wrap {
+    border: 2px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #ffffff;
+    box-sizing: border-box;
+    transition: border-color 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.draft-toolbar {
+.draft-input-wrap:focus-within {
+    border-color: var(--lesson-accent);
+}
+.draft-input-wrap .lesson-input {
+    border: none;
+    border-radius: 0;
+    min-height: 110px;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 15px;
+}
+.draft-input-wrap .draft-canvas {
+    border: none;
+    border-radius: 0;
+    box-sizing: border-box;
+}
+.draft-canvas {
+    width: 100%;
+    height: 240px;
+    display: block;
+    background: white;
+    touch-action: none;
+    cursor: crosshair;
+}
+.draft-toolbar-attached {
+    border-top: 2px solid var(--border-color);
+    background: #f7f7f7;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 .draft-tool-btn {
-    background: #f7f7f7;
-    border: 2px solid var(--border-color);
+    background: transparent;
+    border: 2px solid transparent;
     border-radius: 10px;
     width: 34px;
     height: 34px;
@@ -1981,26 +2008,19 @@ body {
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
 }
+.draft-tool-btn:hover {
+    background: rgba(0,0,0,0.06);
+}
 .draft-tool-btn:active {
     transform: scale(0.92);
 }
 .draft-tool-btn.active {
     background: var(--lesson-accent);
     border-color: var(--lesson-accent);
+    color: white;
 }
 .draft-thickness-slider {
     width: 80px;
     accent-color: var(--lesson-accent);
     cursor: pointer;
-}
-.draft-canvas {
-    width: 100%;
-    height: 120px;
-    display: block;
-    border: 2px solid var(--border-color);
-    border-radius: 16px;
-    background: white;
-    touch-action: none;
-    cursor: crosshair;
-    box-sizing: border-box;
 }
