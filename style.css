@@ -26,17 +26,14 @@
         html {
     overflow-x: hidden;
 }
-html, body {
-            overscroll-behavior-y: contain;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            /* Чтобы при открытом уроке не скроллилось меню на фоне */
-            overflow-x: hidden; 
-        }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    /* Чтобы при открытом уроке не скроллилось меню на фоне */
+    overflow-x: hidden; 
+}
 
         /* Утилита скрытия */
         .hidden { display: none !important; }
@@ -403,7 +400,7 @@ html, body {
         .close-lesson-btn:hover { color: var(--text-color); transform: scale(1.1); }
         .close-lesson-btn:active { transform: scale(0.9); }
 
-        .lesson-main { flex: 1; overflow-y: auto; overscroll-behavior-y: contain; padding: 20px 20px 150px 20px; max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 25px; }
+        .lesson-main { flex: 1; overflow-y: auto; padding: 20px 20px 150px 20px; max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 25px; }
         .lesson-title { font-size: 28px; font-weight: 800; margin: 0 0 10px 0; text-align: left; color: var(--text-color);}
 
         /* Анимации появления контента урока */
@@ -771,7 +768,7 @@ html, body {
         }
 
         /* CHEAT SHEET CSS */
-        .cheat-sheet-wrapper { position: fixed; right: 20px; bottom: 100px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 15px; transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s ease, transform 0.15s ease; pointer-events: none; }
+        .cheat-sheet-wrapper { position: fixed; right: 20px; bottom: 100px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.15s ease, transform 0.15s ease; pointer-events: none; }
         .cheat-sheet-wrapper.hidden-by-footer { opacity: 0; transform: translateY(20px); pointer-events: none !important; }
         .cheat-sheet-wrapper.hidden-by-footer > * { pointer-events: none !important; }
         .cheat-sheet-wrapper > * { pointer-events: auto; }
@@ -781,8 +778,8 @@ html, body {
 
         .cs-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .cs-overlay.active { opacity: 1; pointer-events: auto; }
-        .cs-modal { background: white; width: calc(100vw - 40px); max-width: 400px; max-height: 60vh; border-radius: 24px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; transform-origin: calc(100% - 25px) calc(100% + 40px); transform: scale(0); opacity: 0; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease, height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .cheat-sheet-wrapper.active .cs-modal { transform: scale(1); opacity: 1; }
+        .cs-modal { position: absolute; right: 0; bottom: 65px; background: white; width: calc(100vw - 40px); max-width: 400px; max-height: 60vh; border-radius: 24px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; transform-origin: calc(100% - 25px) calc(100% + 40px); transform: scale(0); opacity: 0; visibility: hidden; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease, height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0s linear 0.3s; }
+        .cheat-sheet-wrapper.active .cs-modal { transform: scale(1); opacity: 1; visibility: visible; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease, height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), visibility 0s linear 0s; }
         .cs-header { padding: 20px; border-bottom: 2px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
         .cs-back-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #1CB0F6; font-weight: bold; padding: 0 10px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; width: 40px; text-align: left; }
         .cs-back-btn.visible { opacity: 1; pointer-events: auto; }
