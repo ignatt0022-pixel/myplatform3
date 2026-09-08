@@ -308,13 +308,50 @@
             <div class="bounce-in delay-2" id="l-draft-container">
     <label class="input-label">📝 Блокнот (Черновик)</label>
     <div class="draft-input-wrap" id="l-draft-input-group">
-        <math-field class="lesson-input" id="l-draft" math-virtual-keyboard-policy="manual"></math-field>
-        <canvas id="l-draft-canvas" class="draft-canvas hidden"></canvas>
-        <div class="draft-toolbar-attached" id="draft-toolbar">
+    <math-field class="lesson-input" id="l-draft" math-virtual-keyboard-policy="manual"></math-field>
+    <canvas id="l-draft-canvas" class="draft-canvas hidden"></canvas>
+    <div class="draft-top-controls hidden" id="draft-top-controls">
+    <button type="button" class="draft-fullscreen-btn" id="draft-fullscreen-btn" onclick="toggleDraftFullscreen()" title="Во весь экран">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+            <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+        </svg>
+    </button>
+    <div class="draft-undo-redo-divider"></div>
+    <button type="button" class="draft-undo-redo-btn" id="draft-undo-btn" onclick="undoDraft()" title="Отменить">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 14 4 9l5-5"/>
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+        </svg>
+    </button>
+    <div class="draft-undo-redo-divider"></div>
+    <button type="button" class="draft-undo-redo-btn" id="draft-redo-btn" onclick="redoDraft()" title="Повторить">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 14 20 9l-5-5"/>
+            <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>
+        </svg>
+    </button>
+</div>
+    <div class="draft-toolbar-attached" id="draft-toolbar">
             <button type="button" class="draft-tool-btn" id="draft-mode-toggle" onclick="toggleDraftDrawMode()" title="Текст / Рисование">🖊</button>
             <button type="button" class="draft-tool-btn hidden active" id="draft-tool-pen" onclick="setDraftTool('pen')" title="Кисть">✏️</button>
             <button type="button" class="draft-tool-btn hidden" id="draft-tool-eraser" onclick="setDraftTool('eraser')" title="Ластик">🧽</button>
-            <input type="range" id="draft-thickness" class="draft-thickness-slider hidden" min="1" max="20" value="3" oninput="setDraftThickness(this.value)">
+<div class="draft-color-wrap hidden" id="draft-color-wrap">
+    <button type="button" class="draft-tool-btn" id="draft-color-btn" onclick="toggleDraftColorPicker()" title="Цвет">
+        <span class="draft-color-swatch" id="draft-color-swatch" style="background: #4b4b4b;"></span>
+    </button>
+    <div class="draft-color-popup hidden" id="draft-color-popup">
+        <button type="button" class="draft-color-option active" data-color="#4b4b4b" style="background: #4b4b4b;" onclick="setDraftColor('#4b4b4b')"></button>
+        <button type="button" class="draft-color-option" data-color="#1cb0f6" style="background: var(--color-5);" onclick="setDraftColor('#1cb0f6')"></button>
+        <button type="button" class="draft-color-option" data-color="#78c800" style="background: var(--color-6);" onclick="setDraftColor('#78c800')"></button>
+        <button type="button" class="draft-color-option" data-color="#ff9600" style="background: var(--color-7);" onclick="setDraftColor('#ff9600')"></button>
+        <button type="button" class="draft-color-option" data-color="#ce82ff" style="background: var(--color-8);" onclick="setDraftColor('#ce82ff')"></button>
+        <button type="button" class="draft-color-option" data-color="#ff4b4b" style="background: var(--color-9);" onclick="setDraftColor('#ff4b4b')"></button>
+    </div>
+</div>
+<input type="range" id="draft-thickness" class="draft-thickness-slider hidden" min="1" max="20" value="3" oninput="setDraftThickness(this.value)">
             <button type="button" class="draft-tool-btn hidden" id="draft-clear-btn" onclick="clearDraftCanvas()" title="Очистить">🗑</button>
         </div>
     </div>
