@@ -26,14 +26,17 @@
         html {
     overflow-x: hidden;
 }
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    margin: 0;
-    /* Чтобы при открытом уроке не скроллилось меню на фоне */
-    overflow-x: hidden; 
-}
+html, body {
+            overscroll-behavior-y: contain;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            /* Чтобы при открытом уроке не скроллилось меню на фоне */
+            overflow-x: hidden; 
+        }
 
         /* Утилита скрытия */
         .hidden { display: none !important; }
