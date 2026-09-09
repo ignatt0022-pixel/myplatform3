@@ -2023,7 +2023,12 @@ body.draft-fullscreen-open {
     color: #4b4b4b;
     transition: background-color 0.2s, color 0.2s;
 }
-.draft-fullscreen-btn:hover {
+@media (hover: hover) {
+    .draft-fullscreen-btn:hover {
+        background: rgba(0,0,0,0.06);
+    }
+}
+.draft-fullscreen-btn:active {
     background: rgba(0,0,0,0.06);
 }
 .draft-fullscreen-btn.active {
@@ -2041,7 +2046,12 @@ body.draft-fullscreen-open {
     color: #4b4b4b;
     transition: background-color 0.2s, color 0.2s, opacity 0.2s;
 }
-.draft-undo-redo-btn:hover:not(:disabled) {
+@media (hover: hover) {
+    .draft-undo-redo-btn:hover:not(:disabled) {
+        background: rgba(0,0,0,0.06);
+    }
+}
+.draft-undo-redo-btn:active:not(:disabled) {
     background: rgba(0,0,0,0.06);
 }
 .draft-undo-redo-btn:disabled {
@@ -2093,7 +2103,12 @@ body.draft-fullscreen-open {
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
 }
-.draft-tool-btn:hover {
+@media (hover: hover) {
+    .draft-tool-btn:hover {
+        background: rgba(0,0,0,0.06);
+    }
+}
+.draft-tool-btn:active {
     background: rgba(0,0,0,0.06);
 }
 .draft-tool-btn:active {
@@ -2105,9 +2120,10 @@ body.draft-fullscreen-open {
     color: var(--lesson-accent);
 }
 #draft-mode-toggle.active {
-    background: var(--lesson-accent);
-    border-color: var(--lesson-accent);
-    color: white;
+    background: #f0f0f0;
+    border-color: #f0f0f0;
+    color: #4b4b4b;
+    border-radius: 0 14px 0 0;
 }
 .draft-thickness-slider {
     width: 110px;
