@@ -213,6 +213,7 @@ function toggleDraftFullscreen() {
     draftIsFullscreen = !draftIsFullscreen;
     const wrap = document.getElementById('l-draft-input-group');
     const btn = document.getElementById('draft-fullscreen-btn');
+    const modeToggle = document.getElementById('draft-mode-toggle');
 
     if (draftIsFullscreen) {
         draftFullscreenPlaceholder = document.createComment('draft-fullscreen-placeholder');
@@ -227,6 +228,7 @@ function toggleDraftFullscreen() {
     wrap.classList.toggle('draft-fullscreen', draftIsFullscreen);
     btn.classList.toggle('active', draftIsFullscreen);
     document.body.classList.toggle('draft-fullscreen-open', draftIsFullscreen);
+    if (modeToggle) modeToggle.classList.toggle('hidden', draftIsFullscreen);
     resizeDraftCanvas();
 }
 function setDraftColor(color) {
