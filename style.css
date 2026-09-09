@@ -1999,6 +1999,18 @@ body.draft-fullscreen-open {
     overflow: hidden;
     z-index: 5;
 }
+.draft-mode-corner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    background: #f7f7f7;
+    border-left: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
+    border-bottom-left-radius: 14px;
+    overflow: hidden;
+    z-index: 5;
+}
 .draft-fullscreen-btn {
     width: 68px;
     height: 34px;
@@ -2046,10 +2058,6 @@ body.draft-fullscreen-open {
 .draft-input-wrap .lesson-input {
     border: none;
     border-radius: 0;
-    min-height: 165px;
-    display: flex;
-    align-items: flex-start;
-    padding-top: 15px;
 }
 .draft-input-wrap .draft-canvas {
     border: none;
