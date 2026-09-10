@@ -302,9 +302,9 @@
 
         <main class="lesson-main" id="l-main">
             <h1 class="lesson-title" id="l-title"></h1>
-            <div class="character-row bounce-in delay-1">
-                <div class="example-bubble" id="l-example-bubble"></div>
-            </div>
+            <div class="character-row bounce-in delay-1" id="l-character-row">
+    <div class="example-bubble" id="l-example-bubble"></div>
+</div>
             <div class="bounce-in delay-2" id="l-draft-container">
     <label class="input-label">📝 Блокнот (Черновик)</label>
     <div class="draft-input-wrap" id="l-draft-input-group">
@@ -365,6 +365,10 @@
                 <div class="input-group">
                     <math-field class="lesson-input" id="l-answer" math-virtual-keyboard-policy="manual"></math-field>
                 </div>
+            </div>
+            <div class="bounce-in delay-3" id="l-options-container">
+                <label class="input-label">🎯 Твой ответ</label>
+                <div class="options-grid" id="l-options-grid"></div>
             </div>
         </main>
 
