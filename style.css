@@ -400,7 +400,7 @@ body {
         .close-lesson-btn:hover { color: var(--text-color); transform: scale(1.1); }
         .close-lesson-btn:active { transform: scale(0.9); }
 
-        .lesson-main { flex: 1; overflow-y: auto; padding: 20px 20px 150px 20px; max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 25px; }
+        .lesson-main { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 20px 20px 150px 20px; max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 25px; }
         .lesson-title { font-size: 28px; font-weight: 800; margin: 0 0 10px 0; text-align: left; color: var(--text-color);}
 
         /* Анимации появления контента урока */
@@ -426,8 +426,35 @@ body {
         .input-group { position: relative; display: flex; align-items: center; width: 100%; }
         .lesson-input { width: 100%; background: #ffffff; border: 2px solid var(--border-color); border-radius: 16px; padding: 15px 50px 15px 20px; font-size: 18px; font-family: 'Nunito', sans-serif; font-weight: 700; color: var(--text-color); box-sizing: border-box; transition: border-color 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .lesson-input:focus, .lesson-input:focus-within { outline: none; border-color: var(--lesson-accent); }
-        
-        math-field::part(virtual-keyboard-toggle) { display: none !important; }
+
+/* Задания с вариантами ответа (2/3/4 options) */
+.options-grid { display: flex; flex-wrap: wrap; gap: 12px; width: 100%; }
+.option-btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+    box-sizing: border-box;
+    background-color: #ffffff;
+    border: 3px solid var(--border-color);
+    box-shadow: 0 4px 0 var(--border-color);
+    border-radius: 16px;
+    padding: 16px 14px;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    color: #4b4b4b;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+.option-btn:hover { border-color: var(--lesson-accent); box-shadow: 0 6px 0 var(--lesson-accent); transform: translateY(-2px); }
+.option-btn:active { transform: translateY(4px) !important; box-shadow: 0 0px 0 transparent !important; }
+.option-btn.selected { border-color: var(--lesson-accent); box-shadow: 0 4px 0 var(--lesson-accent); color: var(--lesson-accent); background-color: #eaf7ff; }
+.option-btn.correct { border-color: var(--success-color); box-shadow: 0 4px 0 var(--success-shadow); color: var(--success-shadow); background-color: var(--success-bg); }
+.option-btn.wrong { border-color: var(--error-color); box-shadow: 0 4px 0 var(--error-color); color: var(--error-color); background-color: #ffffff; }
+.option-btn:disabled { cursor: default; pointer-events: none; }
+.option-btn:disabled:hover { transform: none; }
+
+math-field::part(virtual-keyboard-toggle) { display: none !important; }
         math-field::part(menu-toggle) { display: none !important; }
         
         /* Кастомная математическая клавиатура */
@@ -2221,4 +2248,21 @@ body.draft-fullscreen-open {
 }
 .draft-color-option.active {
     border-color: #4b4b4b;
+}
+
+.draft-task-pin {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: calc(100% - 32px);
+    transform-origin: 0 0;
+    z-index: 3;
+    margin: 0 !important;
+    pointer-events: none;
+}
+
+.draft-input-wrap.draft-fullscreen .draft-canvas {
+    position: relative;
+    z-index: 4;
+    background: transparent;
 }
