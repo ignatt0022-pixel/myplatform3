@@ -301,6 +301,7 @@ let currentTopicBaseId = null;
         let currentTaskIndex = 0;
         let lessonStartTime = 0;
         let lessonErrors = 0;
+        let selectedOptionIndex = null;
 
         // Инициализация при загрузке
         function preprocessCourseData() {
@@ -1433,6 +1434,43 @@ currentLessonFailedTasks = [];
             return tasks;
         }
 
+        // Определяет, является ли задание типом "N options" (несколько вариантов ответа)
+        // и возвращает количество вариантов (0, если это не такой тип задания)
+        function getOptionsCount(task) {
+            if (!task || typeof task.type !== 'string') return 0;
+            const match = task.type.trim().match(/^(\d+)\s*options$/i);
+            return match ? parseInt(match[1], 10) : 0;
+        }
+
+        // Рисует кнопки-варианты ответа для задания типа "N options"
+        function renderOptions(task, optionsCount) {
+            const grid = document.getElementById('l-options-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= optionsCount; i++) {
+                const optionText = task[`${i} option`];
+                if (optionText === undefined || optionText === null) continue;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'option-btn';
+                btn.dataset.optionIndex = i;
+                btn.innerHTML = autoWrapMath(String(optionText));
+                btn.onclick = () => selectOption(i);
+                grid.appendChild(btn);
+            }
+            if (window.MathJax) {
+                MathJax.typesetPromise([grid]).catch((err) => console.log(err.message));
+            }
+        }
+
+        // Обрабатывает выбор варианта ответа
+        function selectOption(index) {
+            selectedOptionIndex = index;
+            const grid = document.getElementById('l-options-grid');
+            grid.querySelectorAll('.option-btn').forEach(btn => {
+                btn.classList.toggle('selected', parseInt(btn.dataset.optionIndex, 10) === index);
+            });
+        }
+
         function loadTask() {
             document.getElementById('l-main').scrollTop = 0;
             const task = currentLesson.tasks[currentTaskIndex];
@@ -1489,6 +1527,7 @@ currentLessonFailedTasks = [];
             const lDraft = document.getElementById('l-draft');
             const lAnswerContainer = document.getElementById('l-answer-container');
             const lDraftContainer = document.getElementById('l-draft-container');
+            const lOptionsContainer = document.getElementById('l-options-container');
             
             lAnswer.value = '';
             lAnswer.disabled = false;
@@ -1498,18 +1537,28 @@ currentLessonFailedTasks = [];
 
             const btnCheck = document.getElementById('btn-check');
             const btnNext = document.getElementById('btn-next');
+            const optionsCount = getOptionsCount(task);
 
             if (!task.correctAnswer || task.correctAnswer.trim() === "") {
                 // Режим теории (нет правильного ответа)
                 lDraftContainer.style.display = 'none';
                 lAnswerContainer.style.display = 'none';
+                lOptionsContainer.style.display = 'none';
                 btnCheck.classList.add('hidden');
                 btnNext.classList.remove('hidden');
                 document.getElementById('btn-next-text').innerText = 'Понятно';
+            } else if (optionsCount > 0) {
+                // Режим вариантов ответа
+                lDraftContainer.style.display = '';
+                lAnswerContainer.style.display = 'none';
+                lOptionsContainer.style.display = '';
+                renderOptions(task, optionsCount);
+                document.getElementById('btn-next-text').innerText = 'Дальше';
             } else {
-                // Режим практики
+                // Режим практики (ввод ответа)
                 lDraftContainer.style.display = '';
                 lAnswerContainer.style.display = '';
+                lOptionsContainer.style.display = 'none';
                 document.getElementById('btn-next-text').innerText = 'Дальше';
             }
 
@@ -1861,6 +1910,15 @@ function copyLessonCode() {
             lAnswer.style.borderColor = '';
             lAnswer.style.backgroundColor = '';
             lAnswer.style.color = '';
+
+            const optionsGrid = document.getElementById('l-options-grid');
+            if (optionsGrid) {
+                optionsGrid.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('selected', 'correct', 'wrong', 'shake');
+                });
+            }
+            selectedOptionIndex = null;
             
             const footer = document.getElementById('l-footer');
             footer.className = 'lesson-footer';
@@ -1931,6 +1989,13 @@ function copyLessonCode() {
             closeMathKeyboard(); // Закрываем клавиатуру при проверке
 
             const task = currentLesson.tasks[currentTaskIndex];
+            const optionsCount = getOptionsCount(task);
+
+            if (optionsCount > 0) {
+                checkOptionsAnswer(task);
+                return;
+            }
+
             const lAnswer = document.getElementById('l-answer');
             
             function normalizeMath(str) {
@@ -2034,6 +2099,70 @@ function copyLessonCode() {
                     }
                 });
             }, 300);
+        }
+
+        // Проверка ответа для заданий типа "N options" (кнопки-варианты)
+        function checkOptionsAnswer(task) {
+            if (!selectedOptionIndex) return; // ничего не выбрано — проверять нечего
+
+            const footer = document.getElementById('l-footer');
+            const grid = document.getElementById('l-options-grid');
+            const isSuccess = (selectedOptionIndex === parseInt(task.correctAnswer, 10));
+
+            if (!isSuccess) {
+                lessonErrors++;
+                const taskNum = currentTaskIndex + 1;
+                if (!currentLessonFailedTasks.includes(taskNum)) {
+                    currentLessonFailedTasks.push(taskNum);
+                }
+            }
+
+            setTimeout(() => {
+                animateFooterOpen(isSuccess, () => {
+                    const selectedBtn = grid.querySelector(`.option-btn[data-option-index="${selectedOptionIndex}"]`);
+                    grid.querySelectorAll('.option-btn').forEach(btn => { btn.disabled = true; });
+
+                    if (isSuccess) {
+                        // Успех
+                        footer.className = 'lesson-footer state-success';
+                        document.getElementById('l-feedback-area').style.display = 'flex';
+                        document.getElementById('l-feedback-title').innerHTML = '<span>✔</span> Отлично!';
+                        document.getElementById('l-feedback-explanation').innerHTML = '';
+
+                        document.getElementById('btn-check').classList.add('hidden');
+                        document.getElementById('btn-next').classList.remove('hidden');
+                        document.getElementById('btn-explain').classList.remove('hidden');
+
+                        if (selectedBtn) {
+                            selectedBtn.classList.remove('selected');
+                            selectedBtn.classList.add('correct');
+                        }
+
+                        if (!currentLesson.isGenerator && currentTaskIndex === currentLesson.tasks.length - 1) {
+                            const progressFill = document.getElementById('l-progress-fill');
+                            if (progressFill) progressFill.style.width = '100%';
+                        }
+                    } else {
+                        // Ошибка
+                        footer.className = 'lesson-footer state-error';
+                        document.getElementById('l-feedback-area').style.display = 'flex';
+                        document.getElementById('l-feedback-title').innerHTML = '<span>✖</span> Неверно!';
+                        document.getElementById('l-feedback-explanation').innerHTML = '';
+
+                        document.getElementById('btn-check').classList.add('hidden');
+                        document.getElementById('btn-retry').classList.remove('hidden');
+                        document.getElementById('btn-explain').classList.remove('hidden');
+
+                        if (selectedBtn) {
+                            selectedBtn.classList.remove('selected');
+                            selectedBtn.classList.add('wrong');
+                            selectedBtn.classList.remove('shake');
+                            void selectedBtn.offsetWidth;
+                            selectedBtn.classList.add('shake');
+                        }
+                    }
+                });
+            }, 150);
         }
 
         function animateFooterClose(callback) {
