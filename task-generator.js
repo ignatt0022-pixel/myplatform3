@@ -22,7 +22,7 @@
 // здесь намеренно — фильтрация происходит там, где куски раскладываются по деталям/тексту.
 function tokenizeAnswer(answer) {
     const str = String(answer);
-    const re = /-?\d+(?:[.,]\d+)?/g;
+    const re = /-?\d+(?:([.,])(\d+))?/g;
     const tokens = [];
     let lastIndex = 0;
     let match;
@@ -31,7 +31,15 @@ function tokenizeAnswer(answer) {
         if (match.index > lastIndex) {
             tokens.push({ type: 'text', value: str.slice(lastIndex, match.index) });
         }
-        tokens.push({ type: 'number', value: match[0], num: parseFloat(match[0].replace(',', '.')) });
+        const separator = match[1] || null;               // "." или "," — или null для целого числа
+        const decimals = match[2] ? match[2].length : 0;   // сколько цифр после разделителя
+        tokens.push({
+            type: 'number',
+            value: match[0],
+            num: parseFloat(match[0].replace(',', '.')),
+            separator,
+            decimals
+        });
         lastIndex = match.index + match[0].length;
     }
     if (lastIndex < str.length) {
@@ -74,29 +82,41 @@ function cloneTokens(tokens) {
     return tokens.map(t => ({ ...t }));
 }
 
-function formatNumber(num) {
-    // Не плодим лишние ".0" у целых чисел
-    return Number.isInteger(num) ? String(num) : String(num);
+// Форматирует число под конкретный токен: если у исходного числа была дробная часть,
+// сохраняем то же количество знаков и тот же разделитель (0,56 -> 0,59, а не 0.59
+// и не 0,5900000000000001 из-за погрешности плавающей точки)
+function formatNumber(num, token) {
+    if (token && token.decimals > 0) {
+        const fixed = num.toFixed(token.decimals);
+        return token.separator === ',' ? fixed.replace('.', ',') : fixed;
+    }
+    return String(num);
 }
 
 function setTokenNumber(token, num) {
+    if (token.decimals > 0) {
+        num = Number(num.toFixed(token.decimals)); // округляем до исходной точности
+    }
     token.num = num;
-    token.value = formatNumber(num);
+    token.value = formatNumber(num, token);
 }
 
 // Приём 1: синхронный сдвиг — ВСЕ числа в ответе сдвигаются на одну и ту же дельту.
 // Используется только когда между числами есть фиксированная арифметическая разница
 // (иначе сдвиг развалит связь между числами и получится не "похожий", а случайный ответ).
-function mutateShiftAll(tokens, delta) {
+function mutateShiftAll(tokens, decimalMode) {
     const clone = cloneTokens(tokens);
+    const firstNumber = clone.find(t => t.type === 'number');
+    const delta = randomDeltaForToken(firstNumber, decimalMode);
     clone.forEach(t => { if (t.type === 'number') setTokenNumber(t, t.num + delta); });
     return clone;
 }
 
 // Приём 2: независимый сдвиг — трогаем только одно случайно выбранное число.
-function mutateShiftOne(tokens, numberIndices, delta) {
+function mutateShiftOne(tokens, numberIndices, decimalMode) {
     const clone = cloneTokens(tokens);
     const idx = numberIndices[Math.floor(Math.random() * numberIndices.length)];
+    const delta = randomDeltaForToken(clone[idx], decimalMode);
     setTokenNumber(clone[idx], clone[idx].num + delta);
     return clone;
 }
@@ -111,10 +131,16 @@ function mutateNegate(tokens, numberIndices) {
     return clone;
 }
 
-// Случайная небольшая дельта: 1, 2 или 3, со случайным знаком (но не 0)
-function randomSmallDelta() {
+// Дельта для сдвига: обычно небольшое целое число (1-3). Но если весь урок состоит
+// из десятичных дробей (decimalMode) — сдвигаем на уровне последнего разряда самой
+// дроби (0,2 -> 0,3 / 0,1, а не 0,2 -> 1,2), чтобы дистрактор остался похожей дробью.
+function randomDeltaForToken(token, decimalMode) {
     const magnitude = 1 + Math.floor(Math.random() * 3);
-    return Math.random() < 0.5 ? magnitude : -magnitude;
+    const sign = Math.random() < 0.5 ? 1 : -1;
+    if (decimalMode && token && token.decimals > 0) {
+        return sign * magnitude * Math.pow(10, -token.decimals);
+    }
+    return sign * magnitude;
 }
 
 
@@ -124,7 +150,7 @@ function randomSmallDelta() {
 
 // Возвращает массив строк-дистракторов (без учёта верного ответа), длиной до `count`.
 // Пытается использовать разные приёмы, чтобы дистракторы отличались друг от друга по "характеру".
-function generateDistractorStrings(tokens, correctString, count) {
+function generateDistractorStrings(tokens, correctString, count, decimalMode) {
     const numberIndices = tokens.map((t, i) => t.type === 'number' ? i : -1).filter(i => i !== -1);
     if (numberIndices.length === 0) return []; // нет чисел — мутировать нечего, options не построить
 
@@ -148,9 +174,9 @@ function generateDistractorStrings(tokens, correctString, count) {
 
         let mutated = null;
         if (technique === 'syncShift') {
-            mutated = mutateShiftAll(tokens, randomSmallDelta());
+            mutated = mutateShiftAll(tokens, decimalMode);
         } else if (technique === 'independentShift') {
-            mutated = mutateShiftOne(tokens, numberIndices, randomSmallDelta());
+            mutated = mutateShiftOne(tokens, numberIndices, decimalMode);
         } else if (technique === 'negate') {
             mutated = mutateNegate(tokens, numberIndices);
         }
@@ -166,11 +192,11 @@ function generateDistractorStrings(tokens, correctString, count) {
 // Собирает готовое задание типа "options" на основе исходного task.correctAnswer.
 // Ничего не пишет напрямую в исходный task — возвращает новый объект полей для слияния,
 // либо null, если из этого ответа options сделать не получилось (нет чисел).
-function buildOptionsFields(correctAnswer, optionsCount) {
+function buildOptionsFields(correctAnswer, optionsCount, decimalMode) {
     optionsCount = optionsCount || 4;
     const tokens = tokenizeAnswer(correctAnswer);
     const correctString = tokensToString(tokens);
-    const distractors = generateDistractorStrings(tokens, correctString, optionsCount - 1);
+    const distractors = generateDistractorStrings(tokens, correctString, optionsCount - 1, decimalMode);
     if (distractors.length === 0) return null;
 
     const variants = [correctString, ...distractors];
@@ -202,7 +228,7 @@ function canBeDetails(correctAnswer) {
 // см. как платформа хранит порядок: detailsSequence.join('') === task.correctAnswer)
 const MAX_DETAILS = 9;
 
-function buildDetailsFields(correctAnswer) {
+function buildDetailsFields(correctAnswer, decimalMode) {
     const rawTokens = tokenizeAnswer(correctAnswer);
     // осмысленные куски: непустой текст или любое число
     const tokens = rawTokens.filter(t => t.type === 'number' || t.value !== '');
@@ -224,9 +250,9 @@ function buildDetailsFields(correctAnswer) {
             decoyNum = -token.num;
         }
         if (decoyNum === null) {
-            decoyNum = token.num + randomSmallDelta();
+            decoyNum = token.num + randomDeltaForToken(token, decimalMode);
         }
-        const decoyText = formatNumber(decoyNum);
+        const decoyText = formatNumber(decoyNum, token);
         if (decoyText === token.value || usedDecoyValues.has(decoyText)) continue;
         usedDecoyValues.add(decoyText);
         pieces.push({ text: decoyText, isCorrect: false });
@@ -268,13 +294,35 @@ function getAvailableTypes(correctAnswer) {
     return types;
 }
 
+function isInputTask(task) {
+    return !!task && typeof task.type === 'string' && task.type.trim().toLowerCase() === 'input';
+}
+
+// Проверяет, являются ли ВСЕ числа во ВСЕХ input-заданиях урока десятичными дробями
+// (через точку или через запятую — принимаются оба варианта одинаково). Если да —
+// во всём уроке дистракторы будут генерироваться как похожие дроби той же точности,
+// а не сдвигом на целые числа.
+function isLessonAllDecimal(inputTasks) {
+    let sawAnyNumber = false;
+    for (const task of inputTasks) {
+        const numberTokens = tokenizeAnswer(task.correctAnswer).filter(t => t.type === 'number');
+        if (numberTokens.length === 0) continue; // в этом ответе чисел нет — не мешает решению
+        sawAnyNumber = true;
+        if (numberTokens.some(t => t.decimals === 0)) return false; // нашли целое число — урок не "дробный"
+    }
+    return sawAnyNumber;
+}
+
 // Распределяет типы по всем input-заданиям урока, стараясь выровнять количество
 // input/options/details примерно поровну, с учётом того, что не любое задание
 // можно превратить в любой тип.
 function planLessonTypes(tasks) {
-    const inputTasks = tasks.filter(t => t.type === 'input');
+    const inputTasks = tasks.filter(isInputTask);
     const n = inputTasks.length;
     if (n === 0) return tasks;
+
+    // если весь урок состоит из десятичных дробей — дистракторы тоже будут дробями
+    const decimalMode = isLessonAllDecimal(inputTasks);
 
     const base = Math.floor(n / 3);
     const quotas = { input: base, options: base, details: base };
@@ -298,12 +346,12 @@ function planLessonTypes(tasks) {
         if (!chosen) chosen = 'input'; // квоты кончились — оставляем как есть
 
         if (chosen === 'options') {
-            const fields = buildOptionsFields(task.correctAnswer);
+            const fields = buildOptionsFields(task.correctAnswer, 4, decimalMode);
             if (fields) { Object.assign(task, fields); quotas.options--; return; }
             chosen = 'details'; // не вышло (не должно случаться, раз available это разрешал) — пробуем запасной вариант
         }
         if (chosen === 'details') {
-            const fields = buildDetailsFields(task.correctAnswer);
+            const fields = buildDetailsFields(task.correctAnswer, decimalMode);
             if (fields) { Object.assign(task, fields); quotas.details--; return; }
         }
         // остаётся как input — ничего не меняем, просто "тратим" квоту input, если она была
@@ -323,4 +371,3 @@ function planLessonTypes(tasks) {
 function autoGenerateLesson(tasks) {
     return planLessonTypes(tasks);
 }
-
