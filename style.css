@@ -446,13 +446,57 @@ body {
     text-align: center;
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s, background-color 0.2s, color 0.2s;
 }
-.option-btn:hover { border-color: var(--lesson-accent); box-shadow: 0 6px 0 var(--lesson-accent); transform: translateY(-2px); }
+@media (hover: hover) and (pointer: fine) {
+    .option-btn:hover { border-color: #b0b0b0; box-shadow: 0 6px 0 #b0b0b0; }
+}
 .option-btn:active { transform: translateY(4px) !important; box-shadow: 0 0px 0 transparent !important; }
 .option-btn.selected { border-color: var(--lesson-accent); box-shadow: 0 4px 0 var(--lesson-accent); color: var(--lesson-accent); background-color: #eaf7ff; }
-.option-btn.correct { border-color: var(--success-color); box-shadow: 0 4px 0 var(--success-shadow); color: var(--success-shadow); background-color: var(--success-bg); }
+        .option-btn.correct { border-color: var(--success-color); box-shadow: 0 4px 0 var(--success-color); color: var(--success-color); background-color: var(--success-bg); }
 .option-btn.wrong { border-color: var(--error-color); box-shadow: 0 4px 0 var(--error-color); color: var(--error-color); background-color: #ffffff; }
 .option-btn:disabled { cursor: default; pointer-events: none; }
-.option-btn:disabled:hover { transform: none; }
+        .option-btn:disabled:hover { transform: none; }
+        .option-btn-graph { padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .option-btn-graph.selected, .option-btn-graph.correct, .option-btn-graph.wrong { background-color: #ffffff; }
+        .option-graph-box { margin: 0 !important; width: 100%; max-width: 220px; background-color: #ffffff; border-radius: 20px; }
+        .option-graph-box iframe { pointer-events: none; }
+        .option-graph-caption { font-size: 15px; }
+        .explanation-graph-box { box-sizing: border-box; margin: 0 !important; }
+
+        /* Задания с деталями (собери ответ из кнопок) */
+        .details-answer-area {
+            min-height: 60px;
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            align-content: flex-start;
+            gap: 10px;
+            margin-bottom: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .details-bank { display: flex; flex-wrap: wrap; gap: 10px; }
+        .detail-chip {
+            background-color: #ffffff;
+            border: 3px solid var(--border-color);
+            box-shadow: 0 4px 0 var(--border-color);
+            border-radius: 14px;
+            padding: 10px 18px;
+            font-size: 16px;
+            font-weight: 800;
+            font-family: 'Nunito', sans-serif;
+            color: #4b4b4b;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+        }
+        
+        .detail-chip.used { opacity: 0; pointer-events: none; }
+       .detail-chip.placed { z-index: 5; }
+        .detail-chip.correct { border-color: var(--success-color); box-shadow: 0 4px 0 var(--success-color); color: var(--success-color); background-color: var(--success-bg); }
+        .detail-chip.wrong { border-color: var(--error-color); box-shadow: 0 4px 0 var(--error-color); color: var(--error-color); }
+        .detail-chip:disabled { cursor: default; pointer-events: none; }
 
 math-field::part(virtual-keyboard-toggle) { display: none !important; }
         math-field::part(menu-toggle) { display: none !important; }
@@ -636,6 +680,14 @@ math-field::part(virtual-keyboard-toggle) { display: none !important; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 50% { transform: translateX(10px); } 75% { transform: translateX(-10px); } }
         .shake { animation: shake 0.4s ease-in-out; }
 
+@keyframes detailJump {
+            0%   { transform: translateY(0) scale(1, 1); }
+            25%  { transform: translateY(2px) scale(1, 0.88); }
+            55%  { transform: translateY(-16px) scale(0.92, 1.1); }
+            75%  { transform: translateY(0) scale(1.08, 0.92); }
+            100% { transform: translateY(0) scale(1, 1); }
+        }
+        .detail-chip.jump { animation: detailJump 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: bottom center; }
         /* Попап урока */
         #lesson-popup {
             position: absolute;
@@ -2265,4 +2317,4 @@ body.draft-fullscreen-open {
     position: relative;
     z-index: 4;
     background: transparent;
-}
+} 
