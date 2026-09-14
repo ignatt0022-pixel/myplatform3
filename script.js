@@ -28,7 +28,10 @@ function onFirebaseReady(callback) {
         // ===================================================
         const TOPIC_URLS = [
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/6-zadanie.json",
-  "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/8-zadanie.json",
+  
+"https://raw.githubusercontent.com/ignatt002/blait/refs/heads/main/7-zadanie.json",
+
+"https://cdn.jsdelivr.net/gh/ignatt002/blait@main/8-zadanie.json",
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/9-zadanie",
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/10-zadanie",
   "https://cdn.jsdelivr.net/gh/ignatt002/blait@main/13-zadanie.json",
@@ -302,6 +305,8 @@ let currentTopicBaseId = null;
         let lessonStartTime = 0;
         let lessonErrors = 0;
         let selectedOptionIndex = null;
+        let selectedOptionIndices = new Set();
+        let detailsSequence = [];
 
         // Инициализация при загрузке
         function preprocessCourseData() {
@@ -1438,10 +1443,167 @@ currentLessonFailedTasks = [];
         // и возвращает количество вариантов (0, если это не такой тип задания)
         function getOptionsCount(task) {
             if (!task || typeof task.type !== 'string') return 0;
-            const match = task.type.trim().match(/^(\d+)\s*options$/i);
+            const type = task.type.trim().toLowerCase();
+            if (type === 'options' || type === 'multiple options') {
+                // Считаем варианты подряд, начиная с "1 option", пока такой ключ есть
+                let count = 0;
+                while (task[`${count + 1} option`] !== undefined) count++;
+                return count;
+            }
+            // Старый формат "2 options" / "3 options" / "4 options" — оставлен для совместимости
+            // с уже написанными заданиями
+            const match = type.match(/^(\d+)\s*options$/);
             return match ? parseInt(match[1], 10) : 0;
         }
 
+        // Задание типа "multiple options" — можно выбрать сразу несколько вариантов.
+        // Также включаем этот режим для обычного типа "options", если в correctAnswer
+        // записано несколько цифр подряд (например, "13" = правильные варианты 1 и 3)
+        function isMultiSelect(task) {
+            if (!task || typeof task.type !== 'string') return false;
+            const type = task.type.trim().toLowerCase();
+            if (type === 'multiple options') return true;
+            if (type === 'options' && task.correctAnswer && String(task.correctAnswer).trim().length > 1) return true;
+            return false;
+        }
+
+        // Задание типа "details" — собрать ответ из отдельных кнопок-деталей,
+        // порядок нажатия имеет значение. Возвращает количество деталей (0, если это не такой тип).
+        function getDetailsCount(task) {
+            if (!task || typeof task.type !== 'string' || task.type.trim().toLowerCase() !== 'details') return 0;
+            let count = 0;
+            while (task[`${count + 1} detail`] !== undefined) count++;
+            return count;
+        }
+
+        // Рисует кнопки-детали в "банке" для задания типа "details"
+        function renderDetails(task, detailsCount) {
+            const bank = document.getElementById('l-details-bank');
+            const answer = document.getElementById('l-details-answer');
+            bank.innerHTML = '';
+            answer.innerHTML = '';
+            detailsSequence = [];
+
+            for (let i = 1; i <= detailsCount; i++) {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'detail-chip';
+                chip.dataset.detailIndex = i;
+                chip.innerHTML = autoWrapMath(String(task[`${i} detail`]));
+                chip.onclick = () => toggleDetail(i);
+                bank.appendChild(chip);
+            }
+            if (window.MathJax) {
+                MathJax.typesetPromise([bank]).catch((err) => console.log(err.message));
+            }
+        }
+
+        // Обрабатывает клик по детали. Кнопка в банке при использовании никуда не убирается
+        // и не двигает соседей — она просто становится невидимой на своём месте, а в поле
+        // ответа появляется её копия, которая "прилетает" туда с анимацией.
+        function toggleDetail(index) {
+            const bank = document.getElementById('l-details-bank');
+            const answer = document.getElementById('l-details-answer');
+            const bankChip = bank.querySelector(`.detail-chip[data-detail-index="${index}"]`);
+            if (!bankChip) return;
+
+            const DURATION = 400;
+            const EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+            if (detailsSequence.includes(index)) {
+                // Убираем деталь из ответа обратно в банк — банк остаётся неподвижным
+                detailsSequence = detailsSequence.filter(i => i !== index);
+                const answerChip = answer.querySelector(`.detail-chip[data-detail-index="${index}"]`);
+                if (!answerChip) { bankChip.classList.remove('used'); return; }
+answerChip.classList.add('removing');
+                answerChip.classList.remove('wrong', 'correct');
+                const bankRect = bankChip.getBoundingClientRect();
+                const answerRect = answerChip.getBoundingClientRect();
+                const dx = bankRect.left - answerRect.left;
+                const dy = bankRect.top - answerRect.top;
+
+                // Web Animations API сам корректно подхватывает деталь с её текущего визуального
+                // места, даже если она ещё доигрывает предыдущую анимацию — ручной сброс не нужен
+                const flight = answerChip.animate(
+                    [{ transform: 'translate(0, 0)' }, { transform: `translate(${dx}px, ${dy}px)` }],
+                    { duration: DURATION, easing: EASING, fill: 'forwards' }
+                );
+
+                flight.finished.then(() => {
+            // Находим вообще ВСЕ соседние детали, включая те, что сейчас летят
+            const allSiblings = Array.from(answer.querySelectorAll('.detail-chip')).filter(c => c !== answerChip);
+            const firstRects = new Map(allSiblings.map(c => [c, c.getBoundingClientRect()]));
+
+            answerChip.remove();
+            bankChip.style.transition = 'none';
+            bankChip.classList.remove('used');
+            void bankChip.offsetWidth;
+            bankChip.style.transition = '';
+
+            allSiblings.forEach(c => {
+                const first = firstRects.get(c);
+                const last = c.getBoundingClientRect();
+                const sdx = first.left - last.left;
+                const sdy = first.top - last.top;
+                
+                if (sdx || sdy) {
+                    if (c.classList.contains('removing')) {
+                        // Если деталь в полете, невидимо компенсируем сдвиг, чтобы не сбивать траекторию
+                        c.style.position = 'relative';
+                        c.style.left = (parseFloat(c.style.left) || 0) + sdx + 'px';
+                        c.style.top = (parseFloat(c.style.top) || 0) + sdy + 'px';
+                    } else {
+                        // Обычные детали (не летящие) плавно сдвигаем на освободившееся место
+                        c.animate(
+                            [{ transform: `translate(${sdx}px, ${sdy}px)` }, { transform: 'translate(0, 0)' }],
+                            { duration: 350, easing: EASING }
+                        );
+                    }
+                }
+            });
+        }).catch(() => {}); // анимация могла быть прервана повторным кликом — это нормально
+            } else {
+                // Переносим деталь в ответ: копия летит из точки, где была кнопка в банке
+                detailsSequence.push(index);
+                const bankRect = bankChip.getBoundingClientRect();
+
+                const answerChip = document.createElement('button');
+                answerChip.type = 'button';
+                answerChip.className = 'detail-chip placed';
+                answerChip.dataset.detailIndex = index;
+                answerChip.innerHTML = bankChip.innerHTML;
+                answerChip.onclick = () => toggleDetail(index);
+                answer.appendChild(answerChip);
+
+                const answerRect = answerChip.getBoundingClientRect();
+                const dx = bankRect.left - answerRect.left;
+                const dy = bankRect.top - answerRect.top;
+
+                answerChip.animate(
+                    [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+                    { duration: DURATION, easing: EASING }
+                );
+
+                bankChip.style.transition = 'none';
+                bankChip.classList.add('used');
+                void bankChip.offsetWidth;
+                bankChip.style.transition = '';
+            }
+        }
+
+        // Если сразу после ключа "N option" в JSON идёт ключ "graphXXX" с непустым
+        // массивом команд — этот график привязан к варианту N и рисуется прямо в кнопке.
+        // Возвращает имя ключа графика или null, если такого нет.
+        function getOptionGraphKey(task, optionIndex) {
+            const keys = Object.keys(task);
+            const pos = keys.indexOf(`${optionIndex} option`);
+            if (pos === -1 || pos + 1 >= keys.length) return null;
+            const nextKey = keys[pos + 1];
+            if (nextKey.toLowerCase().startsWith('graph') && Array.isArray(task[nextKey]) && task[nextKey].length > 0) {
+                return nextKey;
+            }
+            return null;
+        }
         // Рисует кнопки-варианты ответа для задания типа "N options"
         function renderOptions(task, optionsCount) {
             const grid = document.getElementById('l-options-grid');
@@ -1453,8 +1615,25 @@ currentLessonFailedTasks = [];
                 btn.type = 'button';
                 btn.className = 'option-btn';
                 btn.dataset.optionIndex = i;
-                btn.innerHTML = autoWrapMath(String(optionText));
-                btn.onclick = () => selectOption(i);
+
+                const graphKey = getOptionGraphKey(task, i);
+                if (graphKey) {
+                    btn.classList.add('option-btn-graph');
+                    const graphBox = createGraphBox(task[graphKey]);
+                    graphBox.classList.add('option-graph-box');
+                    btn.appendChild(graphBox);
+                    const textStr = String(optionText).trim();
+                    if (textStr !== '') {
+                        const caption = document.createElement('div');
+                        caption.className = 'option-graph-caption';
+                        caption.innerHTML = autoWrapMath(textStr);
+                        btn.appendChild(caption);
+                    }
+                } else {
+                    btn.innerHTML = autoWrapMath(String(optionText));
+                }
+
+                btn.onclick = () => selectOption(i, task);
                 grid.appendChild(btn);
             }
             if (window.MathJax) {
@@ -1462,10 +1641,23 @@ currentLessonFailedTasks = [];
             }
         }
 
-        // Обрабатывает выбор варианта ответа
-        function selectOption(index) {
-            selectedOptionIndex = index;
+        // Обрабатывает выбор варианта ответа. В режиме "multiple options" клик
+        // переключает выбор кнопки, не сбрасывая остальные; иначе выбор одиночный.
+        function selectOption(index, task) {
             const grid = document.getElementById('l-options-grid');
+            if (isMultiSelect(task)) {
+                if (selectedOptionIndices.has(index)) {
+                    selectedOptionIndices.delete(index);
+                } else {
+                    selectedOptionIndices.add(index);
+                }
+                grid.querySelectorAll('.option-btn').forEach(btn => {
+                    const i = parseInt(btn.dataset.optionIndex, 10);
+                    btn.classList.toggle('selected', selectedOptionIndices.has(i));
+                });
+                return;
+            }
+            selectedOptionIndex = index;
             grid.querySelectorAll('.option-btn').forEach(btn => {
                 btn.classList.toggle('selected', parseInt(btn.dataset.optionIndex, 10) === index);
             });
@@ -1484,6 +1676,14 @@ currentLessonFailedTasks = [];
             // Динамическая генерация текста и кода
             const bubble = document.getElementById('l-example-bubble');
             bubble.innerHTML = '';
+
+            // Графики, "привязанные" к вариантам ответа, не дублируем в основном тексте задания
+            const optionsCount = getOptionsCount(task);
+            const claimedGraphKeys = new Set();
+            for (let i = 1; i <= optionsCount; i++) {
+                const graphKey = getOptionGraphKey(task, i);
+                if (graphKey) claimedGraphKeys.add(graphKey);
+            }
 
             if (task.isOge) {
                 const ogeLabel = document.createElement('div');
@@ -1514,7 +1714,7 @@ currentLessonFailedTasks = [];
             div.innerHTML = codeText.replace(/\n/g, '<br>');
             bubble.appendChild(div);
         }
-    } else if (key.toLowerCase().startsWith('graph')) {
+    } else if (key.toLowerCase().startsWith('graph') && !claimedGraphKeys.has(key)) {
     const graphCommands = task[key];
     if (Array.isArray(graphCommands) && graphCommands.length > 0) {
         bubble.appendChild(createGraphBox(graphCommands));
@@ -1528,6 +1728,7 @@ currentLessonFailedTasks = [];
             const lAnswerContainer = document.getElementById('l-answer-container');
             const lDraftContainer = document.getElementById('l-draft-container');
             const lOptionsContainer = document.getElementById('l-options-container');
+            const lDetailsContainer = document.getElementById('l-details-container');
             
             lAnswer.value = '';
             lAnswer.disabled = false;
@@ -1537,13 +1738,14 @@ currentLessonFailedTasks = [];
 
             const btnCheck = document.getElementById('btn-check');
             const btnNext = document.getElementById('btn-next');
-            const optionsCount = getOptionsCount(task);
+            const detailsCount = getDetailsCount(task);
 
             if (!task.correctAnswer || task.correctAnswer.trim() === "") {
                 // Режим теории (нет правильного ответа)
                 lDraftContainer.style.display = 'none';
                 lAnswerContainer.style.display = 'none';
                 lOptionsContainer.style.display = 'none';
+                lDetailsContainer.style.display = 'none';
                 btnCheck.classList.add('hidden');
                 btnNext.classList.remove('hidden');
                 document.getElementById('btn-next-text').innerText = 'Понятно';
@@ -1552,13 +1754,24 @@ currentLessonFailedTasks = [];
                 lDraftContainer.style.display = '';
                 lAnswerContainer.style.display = 'none';
                 lOptionsContainer.style.display = '';
+                lDetailsContainer.style.display = 'none';
                 renderOptions(task, optionsCount);
+                document.getElementById('btn-next-text').innerText = 'Дальше';
+            } else if (detailsCount > 0) {
+                // Режим сборки ответа из деталей
+                lDraftContainer.style.display = '';
+                lAnswerContainer.style.display = 'none';
+                lOptionsContainer.style.display = 'none';
+                lDetailsContainer.style.display = '';
+                renderDetails(task, detailsCount);
+                document.getElementById('l-details-answer').style.minHeight = Math.max(72, document.getElementById('l-details-bank').scrollHeight) + 'px';
                 document.getElementById('btn-next-text').innerText = 'Дальше';
             } else {
                 // Режим практики (ввод ответа)
                 lDraftContainer.style.display = '';
                 lAnswerContainer.style.display = '';
                 lOptionsContainer.style.display = 'none';
+                lDetailsContainer.style.display = 'none';
                 document.getElementById('btn-next-text').innerText = 'Дальше';
             }
 
@@ -1919,6 +2132,17 @@ function copyLessonCode() {
                 });
             }
             selectedOptionIndex = null;
+            selectedOptionIndices.clear();
+
+            const detailsBank = document.getElementById('l-details-bank');
+            const detailsAnswer = document.getElementById('l-details-answer');
+            if (detailsBank && detailsAnswer) {
+                // Используем ту же функцию, что и при обычном клике по детали в ответе —
+                // она уже умеет плавно отправлять деталь обратно в банк
+                [...detailsSequence].forEach(index => toggleDetail(index));
+                detailsBank.querySelectorAll('.detail-chip').forEach(chip => { chip.disabled = false; });
+            }
+            detailsSequence = [];
             
             const footer = document.getElementById('l-footer');
             footer.className = 'lesson-footer';
@@ -1993,6 +2217,12 @@ function copyLessonCode() {
 
             if (optionsCount > 0) {
                 checkOptionsAnswer(task);
+                return;
+            }
+
+            const detailsCount = getDetailsCount(task);
+            if (detailsCount > 0) {
+                checkDetailsAnswer(task);
                 return;
             }
 
@@ -2103,6 +2333,10 @@ function copyLessonCode() {
 
         // Проверка ответа для заданий типа "N options" (кнопки-варианты)
         function checkOptionsAnswer(task) {
+            if (isMultiSelect(task)) {
+                checkMultiOptionsAnswer(task);
+                return;
+            }
             if (!selectedOptionIndex) return; // ничего не выбрано — проверять нечего
 
             const footer = document.getElementById('l-footer');
@@ -2119,8 +2353,16 @@ function copyLessonCode() {
 
             setTimeout(() => {
                 animateFooterOpen(isSuccess, () => {
+                    const correctIndex = parseInt(task.correctAnswer, 10);
                     const selectedBtn = grid.querySelector(`.option-btn[data-option-index="${selectedOptionIndex}"]`);
+                    const correctBtn = grid.querySelector(`.option-btn[data-option-index="${correctIndex}"]`);
                     grid.querySelectorAll('.option-btn').forEach(btn => { btn.disabled = true; });
+
+                    // Правильный вариант подсвечивается всегда, независимо от того, что выбрал ученик
+                    if (correctBtn) {
+                        correctBtn.classList.remove('selected');
+                        correctBtn.classList.add('correct');
+                    }
 
                     if (isSuccess) {
                         // Успех
@@ -2132,11 +2374,6 @@ function copyLessonCode() {
                         document.getElementById('btn-check').classList.add('hidden');
                         document.getElementById('btn-next').classList.remove('hidden');
                         document.getElementById('btn-explain').classList.remove('hidden');
-
-                        if (selectedBtn) {
-                            selectedBtn.classList.remove('selected');
-                            selectedBtn.classList.add('correct');
-                        }
 
                         if (!currentLesson.isGenerator && currentTaskIndex === currentLesson.tasks.length - 1) {
                             const progressFill = document.getElementById('l-progress-fill');
@@ -2160,6 +2397,141 @@ function copyLessonCode() {
                             void selectedBtn.offsetWidth;
                             selectedBtn.classList.add('shake');
                         }
+                    }
+                });
+            }, 150);
+        }
+
+        // Проверка ответа для заданий типа "multiple options" (можно выбрать несколько кнопок)
+        function checkMultiOptionsAnswer(task) {
+            if (selectedOptionIndices.size === 0) return; // ничего не выбрано — проверять нечего
+
+            const footer = document.getElementById('l-footer');
+            const grid = document.getElementById('l-options-grid');
+            const correctSet = new Set(String(task.correctAnswer).trim().split('').map(d => parseInt(d, 10)));
+
+            let isSuccess = selectedOptionIndices.size === correctSet.size;
+            if (isSuccess) {
+                for (const idx of selectedOptionIndices) {
+                    if (!correctSet.has(idx)) { isSuccess = false; break; }
+                }
+            }
+
+            if (!isSuccess) {
+                lessonErrors++;
+                const taskNum = currentTaskIndex + 1;
+                if (!currentLessonFailedTasks.includes(taskNum)) {
+                    currentLessonFailedTasks.push(taskNum);
+                }
+            }
+
+            setTimeout(() => {
+                animateFooterOpen(isSuccess, () => {
+                    grid.querySelectorAll('.option-btn').forEach(btn => {
+                        btn.disabled = true;
+                        const idx = parseInt(btn.dataset.optionIndex, 10);
+                        const wasSelected = selectedOptionIndices.has(idx);
+                        const isCorrectOption = correctSet.has(idx);
+
+                        // Правильные варианты подсвечиваются всегда, даже если их не выбрали
+                        if (isCorrectOption) {
+                            btn.classList.remove('selected');
+                            btn.classList.add('correct');
+                        } else if (wasSelected) {
+                            btn.classList.remove('selected');
+                            btn.classList.add('wrong');
+                            btn.classList.remove('shake');
+                            void btn.offsetWidth;
+                            btn.classList.add('shake');
+                        }
+                    });
+
+                    if (isSuccess) {
+                        footer.className = 'lesson-footer state-success';
+                        document.getElementById('l-feedback-area').style.display = 'flex';
+                        document.getElementById('l-feedback-title').innerHTML = '<span>✔</span> Отлично!';
+                        document.getElementById('l-feedback-explanation').innerHTML = '';
+
+                        document.getElementById('btn-check').classList.add('hidden');
+                        document.getElementById('btn-next').classList.remove('hidden');
+                        document.getElementById('btn-explain').classList.remove('hidden');
+
+                        if (!currentLesson.isGenerator && currentTaskIndex === currentLesson.tasks.length - 1) {
+                            const progressFill = document.getElementById('l-progress-fill');
+                            if (progressFill) progressFill.style.width = '100%';
+                        }
+                    } else {
+                        footer.className = 'lesson-footer state-error';
+                        document.getElementById('l-feedback-area').style.display = 'flex';
+                        document.getElementById('l-feedback-title').innerHTML = '<span>✖</span> Неверно!';
+                        document.getElementById('l-feedback-explanation').innerHTML = '';
+
+                        document.getElementById('btn-check').classList.add('hidden');
+                        document.getElementById('btn-retry').classList.remove('hidden');
+                        document.getElementById('btn-explain').classList.remove('hidden');
+                    }
+                });
+            }, 150);
+        }
+
+        // Проверка ответа для заданий типа "details" (собери ответ из деталей по порядку)
+        function checkDetailsAnswer(task) {
+            if (detailsSequence.length === 0) return; // ничего не собрано — проверять нечего
+
+            const footer = document.getElementById('l-footer');
+            const answer = document.getElementById('l-details-answer');
+            const bank = document.getElementById('l-details-bank');
+            const isSuccess = (detailsSequence.join('') === String(task.correctAnswer).trim());
+
+            if (!isSuccess) {
+                lessonErrors++;
+                const taskNum = currentTaskIndex + 1;
+                if (!currentLessonFailedTasks.includes(taskNum)) {
+                    currentLessonFailedTasks.push(taskNum);
+                }
+            }
+
+            setTimeout(() => {
+                animateFooterOpen(isSuccess, () => {
+                    answer.querySelectorAll('.detail-chip').forEach(chip => { chip.disabled = true; });
+                    bank.querySelectorAll('.detail-chip').forEach(chip => { chip.disabled = true; });
+
+                    if (isSuccess) {
+                        footer.className = 'lesson-footer state-success';
+                        document.getElementById('l-feedback-area').style.display = 'flex';
+                        document.getElementById('l-feedback-title').innerHTML = '<span>✔</span> Отлично!';
+                        document.getElementById('l-feedback-explanation').innerHTML = '';
+
+                        document.getElementById('btn-check').classList.add('hidden');
+                        document.getElementById('btn-next').classList.remove('hidden');
+                        document.getElementById('btn-explain').classList.remove('hidden');
+
+                        answer.querySelectorAll('.detail-chip').forEach((chip, i) => {
+                            chip.classList.add('correct');
+                            chip.style.animationDelay = (i * 80) + 'ms';
+                            chip.classList.add('jump');
+                        });
+
+                        if (!currentLesson.isGenerator && currentTaskIndex === currentLesson.tasks.length - 1) {
+                            const progressFill = document.getElementById('l-progress-fill');
+                            if (progressFill) progressFill.style.width = '100%';
+                        }
+                    } else {
+                        footer.className = 'lesson-footer state-error';
+                        document.getElementById('l-feedback-area').style.display = 'flex';
+                        document.getElementById('l-feedback-title').innerHTML = '<span>✖</span> Неверно!';
+                        document.getElementById('l-feedback-explanation').innerHTML = '';
+
+                        document.getElementById('btn-check').classList.add('hidden');
+                        document.getElementById('btn-retry').classList.remove('hidden');
+                        document.getElementById('btn-explain').classList.remove('hidden');
+
+                        answer.querySelectorAll('.detail-chip').forEach(chip => {
+                            chip.classList.add('wrong');
+                            chip.classList.remove('shake');
+                            void chip.offsetWidth;
+                            chip.classList.add('shake');
+                        });
                     }
                 });
             }, 150);
@@ -2296,20 +2668,75 @@ function copyLessonCode() {
                     expContainer.appendChild(div);
                 });
                 
-                if (task.correctAnswer && task.correctAnswer.trim() !== "") {
-                    const div = document.createElement('div');
-                    div.className = 'explanation-field explanation-correct-answer';
-                    let ca = task.correctAnswer;
-                    if (!ca.includes('$') && !ca.includes('\\(') && !ca.includes('\\[')) {
-                        ca = `\\( ${ca} \\)`;
+ if (task.correctAnswer && task.correctAnswer.trim() !== "") {
+                    const optionsCount = getOptionsCount(task);
+
+                    if (optionsCount > 0 && isMultiSelect(task)) {
+                        const correctIndices = String(task.correctAnswer).trim().split('').map(d => parseInt(d, 10));
+                        const textPieces = [];
+                        const graphPieces = [];
+                        correctIndices.forEach(idx => {
+                            const graphKey = getOptionGraphKey(task, idx);
+                            if (graphKey) {
+                                graphPieces.push(task[graphKey]);
+                            } else {
+                                const optText = task[`${idx} option`];
+                                textPieces.push(String(optText !== undefined ? optText : idx));
+                            }
+                        });
+
+                        const headerDiv = document.createElement('div');
+                        headerDiv.className = 'explanation-field explanation-correct-answer';
+                        headerDiv.style.animationDelay = `${delayCount * 0.1}s`;
+                        headerDiv.innerHTML = textPieces.length > 0
+                            ? `Правильный ответ: ${autoWrapMath(textPieces.join(', '))}`
+                            : `Правильный ответ:`;
+                        expContainer.appendChild(headerDiv);
+                        delayCount++;
+
+                        graphPieces.forEach(graphCommands => {
+                            const graphBox = createGraphBox(graphCommands);
+                            graphBox.classList.add('explanation-field', 'explanation-graph-box');
+                            graphBox.style.animationDelay = `${delayCount * 0.1}s`;
+                            expContainer.appendChild(graphBox);
+                            delayCount++;
+                        });
+                    } else {
+                        const div = document.createElement('div');
+                        div.className = 'explanation-field explanation-correct-answer';
+                        div.style.animationDelay = `${delayCount * 0.1}s`;
+                        const graphKey = optionsCount > 0 ? getOptionGraphKey(task, parseInt(task.correctAnswer, 10)) : null;
+
+                        if (graphKey) {
+                            div.innerHTML = `Правильный ответ:`;
+                            expContainer.appendChild(div);
+                            const graphBox = createGraphBox(task[graphKey]);
+                            graphBox.classList.add('explanation-field', 'explanation-graph-box');
+                            graphBox.style.animationDelay = `${delayCount * 0.1}s`;
+                            expContainer.appendChild(graphBox);
+                        } else {
+                            let ca;
+                            const detailsCount = getDetailsCount(task);
+                            if (optionsCount > 0) {
+                                const optionText = task[`${task.correctAnswer} option`];
+                                ca = autoWrapMath(String(optionText !== undefined ? optionText : task.correctAnswer));
+                            } else if (detailsCount > 0) {
+                                const order = String(task.correctAnswer).trim().split('').map(d => parseInt(d, 10));
+                                ca = autoWrapMath(order.map(idx => String(task[`${idx} detail`] !== undefined ? task[`${idx} detail`] : idx)).join(' '));
+                            } else {
+                                ca = task.correctAnswer;
+                                if (!ca.includes('$') && !ca.includes('\\(') && !ca.includes('\\[')) {
+                                    ca = `\\( ${ca} \\)`;
+                                }
+                            }
+                            div.innerHTML = `Правильный ответ: ${ca}`;
+                            expContainer.appendChild(div);
+                        }
+                        delayCount++;
                     }
-                    div.innerHTML = `Правильный ответ: ${ca}`;
-                    div.style.animationDelay = `${delayCount * 0.1}s`;
-                    expContainer.appendChild(div);
-                    delayCount++;
                 }
-                
-                // Рендерим MathJax для текста объяснения
+                                   
+                           // Рендерим MathJax для текста объяснения
                 if (window.MathJax) {
                     MathJax.typesetPromise([expContainer]).catch((err) => console.log(err.message));
                 }
@@ -3531,4 +3958,4 @@ function createGraphBox(graphCommands) {
 
     graphWrapper.appendChild(iframe);
     return graphWrapper;
-      } 
+      }
