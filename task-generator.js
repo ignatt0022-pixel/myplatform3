@@ -74,11 +74,14 @@ function tokenizePlain(str) {
         }
         const separator = match[1] || null;               // "." или "," — или null для целого числа
         const decimals = match[2] ? match[2].length : 0;   // сколько цифр после разделителя
+        // разделитель нормализуем к запятой сразу здесь, даже если в ответе была точка —
+        // "видим" точку при разборе, но дальше везде (и в правильном варианте среди
+        // options/details, и в дистракторах) показываем только запятую
         tokens.push({
             type: 'number',
-            value: match[0],
+            value: separator ? match[0].replace(separator, ',') : match[0],
             num: parseFloat(match[0].replace(',', '.')),
-            separator,
+            separator: separator ? ',' : null,
             decimals
         });
         lastIndex = match.index + match[0].length;
@@ -267,8 +270,19 @@ function generateDistractorStrings(tokens, correctString, count, decimalMode) {
     let techPointer = 0;
     while (results.size < count && attempts < maxAttempts) {
         attempts++;
-        const technique = techniques[techPointer % techniques.length];
-        techPointer++;
+        let technique;
+        if (symbolIndices.length > 0 && Math.random() < 0.5) {
+            // скобке/знаку неравенства даём отдельный шанс ~50% на попытку —
+            // иначе при чередовании по кругу с другими приёмами она попадает
+            // в дистракторы слишком редко
+            technique = 'swapSymbol';
+        } else {
+            const otherTechniques = techniques.filter(t => t !== 'swapSymbol');
+            technique = otherTechniques.length > 0
+                ? otherTechniques[techPointer % otherTechniques.length]
+                : 'swapSymbol';
+            techPointer++;
+        }
 
         let mutated = null;
         if (technique === 'syncShift') {
@@ -277,6 +291,13 @@ function generateDistractorStrings(tokens, correctString, count, decimalMode) {
             mutated = mutateShiftOne(tokens, numberIndices, decimalMode);
         } else if (technique === 'swapSymbol') {
             mutated = mutateSwapSymbol(tokens, symbolIndices);
+            // заодно меняем и число — иначе дистрактор отличался бы от правильного
+            // ответа ТОЛЬКО скобкой, а числа совпадали бы один в один
+            if (mutated && numberIndices.length > 0) {
+                mutated = syncStep !== null
+                    ? mutateShiftAll(mutated, decimalMode)
+                    : mutateShiftOne(mutated, numberIndices, decimalMode);
+            }
         } else if (technique === 'shiftRoot') {
             mutated = mutateShiftRoot(tokens, rootIndices, decimalMode);
         } else if (technique === 'negate') {
@@ -392,23 +413,82 @@ function expandNumbersForDetails(tokens) {
     return result;
 }
 
-// Может ли ответ вообще быть "собран из деталей": нужно минимум 2 осмысленных куска
-// (иначе, как с голым "5", разбирать нечего — это ровно один кусок).
-function canBeDetails(correctAnswer) {
-    const tokens = expandNumbersForDetails(splitRootTokensForDetails(tokenizeAnswer(correctAnswer)))
-        .filter(t => t.type === 'number' || t.type === 'rootMark' || t.value !== '');
-    return tokens.length > 1;
+// Общая логика для canBeDetails/buildDetailsFields: раскладываем число на знак/целую/
+// запятую/дробную часть ТОЛЬКО если это число — единственный осмысленный кусок во
+// всём ответе (иначе разбирать вообще было бы нечего, как с голым "5" или "-5").
+// Если рядом уже есть что-то ещё ("0,2; 8", "2\sqrt{5}") — число остаётся целым,
+// а приманками для него служат готовые целые числа (уже умеет обычный приём сдвига).
+function meaningfulDetailsFilter(t) {
+    return t.type === 'number' || t.type === 'rootMark' || t.value !== '';
 }
 
 // Для details лимит — 9 деталей суммарно (одна цифра на индекс в correctAnswer,
-// см. как платформа хранит порядок: detailsSequence.join('') === task.correctAnswer)
+// см. как платформа хранит порядок: detailsSequence.join('') === task.correctAnswer).
+// Индекс двузначным быть не может — значит больше 9 кусочков передать корректно нельзя.
 const MAX_DETAILS = 9;
 
+// Если кусочков получилось больше MAX_DETAILS — не отказываемся от details сразу,
+// а схлопываем обратно самые необязательные: сначала скобки/знаки неравенства
+// (теряем для них только отдельную приманку-замену, сама сборка не страдает),
+// и только если совсем не помещается — склеиваем соседние текстовые куски.
+// Числа, знак минуса и плейсхолдер-корень никогда не трогаем — это то, что
+// действительно нужно собирать по смыслу.
+function compactTokensForDetails(tokens) {
+    let result = tokens.slice();
+    let guard = 0;
+    while (result.length > MAX_DETAILS && guard < 50) {
+        guard++;
+        let merged = false;
+
+        for (let i = 0; i < result.length; i++) {
+            if (result[i].type !== 'symbol') continue;
+            if (result[i + 1] && result[i + 1].type === 'text') {
+                result[i + 1] = { type: 'text', value: result[i].value + result[i + 1].value };
+                result.splice(i, 1);
+            } else if (result[i - 1] && result[i - 1].type === 'text') {
+                result[i - 1] = { type: 'text', value: result[i - 1].value + result[i].value };
+                result.splice(i, 1);
+            } else {
+                result[i] = { type: 'text', value: result[i].value }; // склеим на следующем шаге
+            }
+            merged = true;
+            break;
+        }
+        if (merged) continue;
+
+        for (let i = 0; i < result.length - 1; i++) {
+            if (result[i].type === 'text' && result[i + 1].type === 'text') {
+                result[i] = { type: 'text', value: result[i].value + result[i + 1].value };
+                result.splice(i + 1, 1);
+                merged = true;
+                break;
+            }
+        }
+        if (!merged) break; // больше нечего склеивать — сдаёмся
+    }
+    return result;
+}
+
+function getDetailsTokens(correctAnswer) {
+    const rootSplitTokens = splitRootTokensForDetails(tokenizeAnswer(correctAnswer));
+    const isAlone = rootSplitTokens.filter(meaningfulDetailsFilter).length === 1;
+    let tokens = (isAlone ? expandNumbersForDetails(rootSplitTokens) : rootSplitTokens)
+        .filter(meaningfulDetailsFilter);
+    if (tokens.length > MAX_DETAILS) tokens = compactTokensForDetails(tokens).filter(meaningfulDetailsFilter);
+    return tokens;
+}
+
+// Может ли ответ вообще быть "собран из деталей": нужно минимум 2 осмысленных куска
+// (иначе, как с голым "5", разбирать нечего — это ровно один кусок), но не больше
+// MAX_DETAILS даже после схлопывания — иначе индекс кусочка сломает correctAnswer.
+function canBeDetails(correctAnswer) {
+    const n = getDetailsTokens(correctAnswer).length;
+    return n > 1 && n <= MAX_DETAILS;
+}
+
 function buildDetailsFields(correctAnswer, decimalMode) {
-    const rawTokens = expandNumbersForDetails(splitRootTokensForDetails(tokenizeAnswer(correctAnswer)));
-    // осмысленные куски: непустой текст, любое число, либо пустой плейсхолдер-корень
-    const tokens = rawTokens.filter(t => t.type === 'number' || t.type === 'rootMark' || t.value !== '');
-    if (tokens.length <= 1) return null;
+    const tokens = getDetailsTokens(correctAnswer);
+    if (tokens.length <= 1 || tokens.length > MAX_DETAILS) return null;
 
     const numberIndices = tokens.map((t, i) => t.type === 'number' ? i : -1).filter(i => i !== -1);
     const symbolIndices = tokens.map((t, i) => t.type === 'symbol' ? i : -1).filter(i => i !== -1);
@@ -433,8 +513,7 @@ function buildDetailsFields(correctAnswer, decimalMode) {
             let attempts = 0;
             while (added < 2 && attempts < 20 && pieces.length < MAX_DETAILS) {
                 attempts++;
-                const useNegate = attempts === 1 && token.num !== 0;
-                const decoyNum = useNegate ? -token.num : token.num + randomDeltaForToken(token, decimalMode);
+                const decoyNum = token.num + randomDeltaForToken(token, decimalMode);
                 const decoyText = formatNumber(decoyNum, token);
                 if (usedDecoyValues.has(decoyText)) continue;
                 usedDecoyValues.add(decoyText);
@@ -465,7 +544,6 @@ function buildDetailsFields(correctAnswer, decimalMode) {
         }
 
         const candidates = [];
-        if (token.num !== 0) candidates.push(-token.num);                                  // смена знака
         candidates.push(token.num + randomDeltaForToken(token, decimalMode));               // сдвиг №1
         candidates.push(token.num + randomDeltaForToken(token, decimalMode));               // сдвиг №2 (другое число)
 
