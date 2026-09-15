@@ -319,19 +319,72 @@ function buildOptionsFields(correctAnswer, optionsCount, decimalMode) {
    Генерация раскладки для типа "details"
    =================================================== */
 
-// Для деталей корень нельзя оставлять неделимым куском (как в options) — раскладываем
-// его на два кусочка: пустой плейсхолдер-корень (сам синтаксис красиво не отрисовать,
-// поэтому лучше пусто, чем сырой код) и число под корнем как обычное число — чтобы
-// к нему подбиралась приманка на общих основаниях
+// Пустой (визуально) корень: сам знак радикала отрисуется через MathJax,
+// а содержимое — невидимый символ-пробел
+const ROOT_EMPTY = '\\sqrt{⠀}';
+
+// Для деталей: если корень стоит САМ ПО СЕБЕ (без множителя перед ним, "\sqrt{5}") —
+// раскладываем на пустой плейсхолдер-корень + число, как раньше. Но если перед корнем
+// сразу стоит число-множитель ("2\sqrt{5}") — корень НЕ разбираем: если бы тут тоже
+// был пустой плейсхолдер, в банке оказались бы два неотличимых голых числа (множитель
+// и число под корнем) без возможности понять, какое из них куда относится. Поэтому
+// корень с множителем остаётся целым видимым кусочком ("\sqrt{5}"), а приманками для
+// него служат другие целые корни ("\sqrt{3}", "\sqrt{8}"...), как это уже устроено в options.
 function splitRootTokensForDetails(tokens) {
     const result = [];
-    tokens.forEach(t => {
-        if (t.type === 'root') {
-            result.push({ type: 'rootMark', value: '\\sqrt{⠀}' });
+    tokens.forEach((t, i) => {
+        if (t.type !== 'root') { result.push(t); return; }
+
+        const prev = tokens[i - 1];
+        const hasCoefficient = !!prev && prev.type === 'number';
+
+        if (hasCoefficient) {
+            result.push({ ...t, wholeRoot: true });
+        } else {
+            result.push({ type: 'rootMark', value: ROOT_EMPTY });
             const numStr = String(t.num);
             const dotIdx = numStr.indexOf('.');
             const decimals = dotIdx === -1 ? 0 : numStr.length - dotIdx - 1;
-            result.push({ type: 'number', value: numStr, num: t.num, separator: '.', decimals });
+            result.push({ type: 'number', value: numStr, num: t.num, separator: '.', decimals, fromRoot: true });
+        }
+    });
+    return result;
+}
+
+// Разбирает одно число на составные кусочки: знак минус (если отрицательное),
+// целая часть, разделитель и дробная часть (если есть дробь). Благодаря этому даже
+// голое "-5" или "0,25" в качестве ВСЕГО ответа становится "собираемым" — в нём
+// больше одного осмысленного кусочка. Разделитель всегда даём запятой, даже если
+// в правильном ответе стояла точка — порядок кликов не зависит от символа, так что
+// кусочек-запятая одинаково годится и как запятая, и как точка.
+function splitNumberIntoPieces(token) {
+    const isNegative = token.num < 0;
+    const absNum = Math.abs(token.num);
+    const pieces = [];
+    if (isNegative) pieces.push({ type: 'sign', value: '-' });
+
+    if (token.decimals > 0) {
+        const fixed = absNum.toFixed(token.decimals);
+        const [intStr, fracStr] = fixed.split('.');
+        pieces.push({ type: 'number', value: intStr, num: parseFloat(intStr), decimals: 0, plainPart: true });
+        pieces.push({ type: 'symbol', value: ',' });
+        pieces.push({ type: 'number', value: fracStr, num: parseInt(fracStr, 10), decimals: 0, plainPart: true, padLength: fracStr.length });
+    } else {
+        const intStr = String(absNum);
+        pieces.push({ type: 'number', value: intStr, num: parseFloat(intStr), decimals: 0, plainPart: true });
+    }
+    return pieces;
+}
+
+// Раскладывает на составные кусочки каждое число в списке токенов, у которого есть
+// знак или дробная часть (иначе разбивать нечего — оставляем как было).
+function expandNumbersForDetails(tokens) {
+    const result = [];
+    tokens.forEach(t => {
+        if (t.type === 'number' && (t.num < 0 || t.decimals > 0)) {
+            const subPieces = splitNumberIntoPieces(t);
+            subPieces.forEach(sp => { if (sp.fromRoot === undefined) sp.fromRoot = t.fromRoot; });
+            result.push(...subPieces);
         } else {
             result.push(t);
         }
@@ -342,7 +395,7 @@ function splitRootTokensForDetails(tokens) {
 // Может ли ответ вообще быть "собран из деталей": нужно минимум 2 осмысленных куска
 // (иначе, как с голым "5", разбирать нечего — это ровно один кусок).
 function canBeDetails(correctAnswer) {
-    const tokens = splitRootTokensForDetails(tokenizeAnswer(correctAnswer))
+    const tokens = expandNumbersForDetails(splitRootTokensForDetails(tokenizeAnswer(correctAnswer)))
         .filter(t => t.type === 'number' || t.type === 'rootMark' || t.value !== '');
     return tokens.length > 1;
 }
@@ -352,13 +405,14 @@ function canBeDetails(correctAnswer) {
 const MAX_DETAILS = 9;
 
 function buildDetailsFields(correctAnswer, decimalMode) {
-    const rawTokens = splitRootTokensForDetails(tokenizeAnswer(correctAnswer));
+    const rawTokens = expandNumbersForDetails(splitRootTokensForDetails(tokenizeAnswer(correctAnswer)));
     // осмысленные куски: непустой текст, любое число, либо пустой плейсхолдер-корень
     const tokens = rawTokens.filter(t => t.type === 'number' || t.type === 'rootMark' || t.value !== '');
     if (tokens.length <= 1) return null;
 
     const numberIndices = tokens.map((t, i) => t.type === 'number' ? i : -1).filter(i => i !== -1);
     const symbolIndices = tokens.map((t, i) => t.type === 'symbol' ? i : -1).filter(i => i !== -1);
+    const wholeRootIndices = tokens.map((t, i) => t.wholeRoot ? i : -1).filter(i => i !== -1);
 
     // Правильные кусочки — все токены по порядку
     const pieces = tokens.map((t, originalOrder) => ({ text: t.value, isCorrect: true, originalOrder }));
@@ -370,12 +424,51 @@ function buildDetailsFields(correctAnswer, decimalMode) {
     const usedDecoyValues = new Set(pieces.map(p => p.text));
     for (const idx of numberIndices) {
         const token = tokens[idx];
+        let added = 0;
+
+        if (token.fromRoot) {
+            // для числа под корнем нужны гарантированно две РАЗНЫЕ неправильные версии
+            // (по вашему требованию) — подбираем их в цикле заново при совпадении,
+            // а не по фиксированному списку из трёх кандидатов, где могло не повезти
+            let attempts = 0;
+            while (added < 2 && attempts < 20 && pieces.length < MAX_DETAILS) {
+                attempts++;
+                const useNegate = attempts === 1 && token.num !== 0;
+                const decoyNum = useNegate ? -token.num : token.num + randomDeltaForToken(token, decimalMode);
+                const decoyText = formatNumber(decoyNum, token);
+                if (usedDecoyValues.has(decoyText)) continue;
+                usedDecoyValues.add(decoyText);
+                pieces.push({ text: decoyText, isCorrect: false });
+                added++;
+            }
+            continue;
+        }
+
+        if (token.plainPart) {
+            // кусочек — часть разложенного числа (целая или дробная часть без знака,
+            // знак уже отдельный кусочек) — приманки только сдвигом, без смены знака,
+            // и с сохранением ширины (для дробной части: "05", а не "5")
+            let attempts = 0;
+            while (added < 2 && attempts < 20 && pieces.length < MAX_DETAILS) {
+                attempts++;
+                const magnitude = 1 + Math.floor(Math.random() * 3);
+                let decoyNum = token.num + (Math.random() < 0.5 ? magnitude : -magnitude);
+                if (decoyNum < 0) decoyNum = Math.abs(decoyNum);
+                let decoyText = String(decoyNum);
+                if (token.padLength) decoyText = decoyText.padStart(token.padLength, '0').slice(-token.padLength);
+                if (decoyText === token.value || usedDecoyValues.has(decoyText)) continue;
+                usedDecoyValues.add(decoyText);
+                pieces.push({ text: decoyText, isCorrect: false });
+                added++;
+            }
+            continue;
+        }
+
         const candidates = [];
         if (token.num !== 0) candidates.push(-token.num);                                  // смена знака
         candidates.push(token.num + randomDeltaForToken(token, decimalMode));               // сдвиг №1
         candidates.push(token.num + randomDeltaForToken(token, decimalMode));               // сдвиг №2 (другое число)
 
-        let added = 0;
         for (const decoyNum of candidates) {
             if (pieces.length >= MAX_DETAILS || added >= 2) break;
             const decoyText = formatNumber(decoyNum, token);
@@ -394,6 +487,25 @@ function buildDetailsFields(correctAnswer, decimalMode) {
         if (!decoyText || decoyText === token.value || usedDecoyValues.has(decoyText)) continue;
         usedDecoyValues.add(decoyText);
         pieces.push({ text: decoyText, isCorrect: false });
+    }
+
+    // Корень с множителем ("2\sqrt{5}") остался целым кусочком — приманки для него
+    // тоже целые альтернативные корни ("\sqrt{3}", "\sqrt{8}"...), а не разобранные части.
+    // Гарантируем минимум 2 разных приманки, как и для обычного числа под корнем.
+    for (const idx of wholeRootIndices) {
+        const token = tokens[idx];
+        let added = 0;
+        let attempts = 0;
+        while (added < 2 && attempts < 20 && pieces.length < MAX_DETAILS) {
+            attempts++;
+            let decoyNum = token.num + randomDeltaForToken(token, decimalMode);
+            if (decoyNum < 0) decoyNum = Math.abs(decoyNum) + 1; // под корнем не бывает отрицательного
+            const decoyText = formatRoot(decoyNum, token.format);
+            if (decoyText === token.value || usedDecoyValues.has(decoyText)) continue;
+            usedDecoyValues.add(decoyText);
+            pieces.push({ text: decoyText, isCorrect: false });
+            added++;
+        }
     }
 
     // Перемешиваем весь банк деталей
