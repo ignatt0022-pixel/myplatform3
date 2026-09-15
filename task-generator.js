@@ -20,8 +20,49 @@
 // Число — это { type:'number', value:'14', num:14 }, текст — { type:'text', value:' и ' }.
 // Пустые текстовые куски (например, если ответ начинается сразу с числа) не отбрасываются
 // здесь намеренно — фильтрация происходит там, где куски раскладываются по деталям/тексту.
-function tokenizeAnswer(answer) {
-    const str = String(answer);
+// Символы, у которых есть "противоположная" версия — скобки и знаки неравенства.
+// Используются, чтобы делать дистракторы вида "(0,5; 0,6]" вместо честного "[0,5; 0,6]".
+const SWAP_MAP = { '[': '(', '(': '[', ']': ')', ')': ']', '<': '>', '>': '<' };
+
+// Режет текстовый кусок на отдельные токены: одиночные "переключаемые" символы
+// становятся своим токеном type:'symbol', всё остальное (пробелы, ";", "и" и т.п.)
+// остаётся текстом как раньше
+function splitSymbolTokens(text) {
+    const result = [];
+    let buf = '';
+    for (const ch of text) {
+        if (SWAP_MAP.hasOwnProperty(ch)) {
+            if (buf) { result.push({ type: 'text', value: buf }); buf = ''; }
+            result.push({ type: 'symbol', value: ch });
+        } else {
+            buf += ch;
+        }
+    }
+    if (buf) result.push({ type: 'text', value: buf });
+    return result;
+}
+
+// Корень целиком — неделимый кусок: "\sqrt{7}", "√7", "√(7)". Число внутри мутируем
+// как единое целое (весь корень меняется на другой готовый корень), а не разбираем
+// на "\sqrt{" + число + "}" по отдельности — иначе в детали попадёт нечитаемый обрывок кода.
+const ROOT_RE = /\\sqrt\{(-?\d+(?:[.,]\d+)?)\}|√\((-?\d+(?:[.,]\d+)?)\)|√(-?\d+(?:[.,]\d+)?)/g;
+
+function rootFormatOf(m) {
+    if (m[1] !== undefined) return 'latex'; // \sqrt{N}
+    if (m[2] !== undefined) return 'paren'; // √(N)
+    return 'plain';                          // √N
+}
+
+function formatRoot(num, format) {
+    const n = String(num);
+    if (format === 'latex') return `\\sqrt{${n}}`;
+    if (format === 'paren') return `√(${n})`;
+    return `√${n}`;
+}
+
+// Обычная (без корней) разбивка куска строки на числа/символы/текст —
+// прежнее содержимое tokenizeAnswer
+function tokenizePlain(str) {
     const re = /-?\d+(?:([.,])(\d+))?/g;
     const tokens = [];
     let lastIndex = 0;
@@ -29,7 +70,7 @@ function tokenizeAnswer(answer) {
 
     while ((match = re.exec(str)) !== null) {
         if (match.index > lastIndex) {
-            tokens.push({ type: 'text', value: str.slice(lastIndex, match.index) });
+            tokens.push(...splitSymbolTokens(str.slice(lastIndex, match.index)));
         }
         const separator = match[1] || null;               // "." или "," — или null для целого числа
         const decimals = match[2] ? match[2].length : 0;   // сколько цифр после разделителя
@@ -43,7 +84,34 @@ function tokenizeAnswer(answer) {
         lastIndex = match.index + match[0].length;
     }
     if (lastIndex < str.length) {
-        tokens.push({ type: 'text', value: str.slice(lastIndex) });
+        tokens.push(...splitSymbolTokens(str.slice(lastIndex)));
+    }
+    return tokens;
+}
+
+function tokenizeAnswer(answer) {
+    const str = String(answer);
+    const tokens = [];
+    let lastIndex = 0;
+    let match;
+
+    // сначала выделяем корни целиком, чтобы дальше их точно никто не разобрал на части
+    while ((match = ROOT_RE.exec(str)) !== null) {
+        if (match.index > lastIndex) {
+            tokens.push(...tokenizePlain(str.slice(lastIndex, match.index)));
+        }
+        const numStr = match[1] || match[2] || match[3];
+        tokens.push({
+            type: 'root',
+            value: match[0],
+            num: parseFloat(numStr.replace(',', '.')),
+            format: rootFormatOf(match),
+            decimals: 0
+        });
+        lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < str.length) {
+        tokens.push(...tokenizePlain(str.slice(lastIndex)));
     }
     return tokens;
 }
@@ -131,6 +199,29 @@ function mutateNegate(tokens, numberIndices) {
     return clone;
 }
 
+// Приём 4: смена одной скобки/знака на противоположный ("[" -> "(", "<" -> ">").
+function mutateSwapSymbol(tokens, symbolIndices) {
+    if (symbolIndices.length === 0) return null;
+    const clone = cloneTokens(tokens);
+    const idx = symbolIndices[Math.floor(Math.random() * symbolIndices.length)];
+    clone[idx].value = SWAP_MAP[clone[idx].value];
+    return clone;
+}
+
+// Приём 5: меняем число под корнем, пересобирая корень целиком той же формы
+// ("\sqrt{7}" -> "\sqrt{9}"), не трогая сам синтаксис корня.
+function mutateShiftRoot(tokens, rootIndices, decimalMode) {
+    if (rootIndices.length === 0) return null;
+    const clone = cloneTokens(tokens);
+    const idx = rootIndices[Math.floor(Math.random() * rootIndices.length)];
+    const token = clone[idx];
+    let newNum = token.num + randomDeltaForToken(token, decimalMode);
+    if (newNum < 0) newNum = Math.abs(newNum) + 1; // под корнем отрицательного числа не бывает
+    token.num = newNum;
+    token.value = formatRoot(newNum, token.format);
+    return clone;
+}
+
 // Дельта для сдвига: обычно небольшое целое число (1-3). Но если весь урок состоит
 // из десятичных дробей (decimalMode) — сдвигаем на уровне последнего разряда самой
 // дроби (0,2 -> 0,3 / 0,1, а не 0,2 -> 1,2), чтобы дистрактор остался похожей дробью.
@@ -152,8 +243,10 @@ function randomDeltaForToken(token, decimalMode) {
 // Пытается использовать разные приёмы, чтобы дистракторы отличались друг от друга по "характеру".
 function generateDistractorStrings(tokens, correctString, count, decimalMode) {
     const numberIndices = tokens.map((t, i) => t.type === 'number' ? i : -1).filter(i => i !== -1);
-    if (numberIndices.length === 0) return []; // нет чисел — мутировать нечего, options не построить
+    const rootIndices = tokens.map((t, i) => t.type === 'root' ? i : -1).filter(i => i !== -1);
+    if (numberIndices.length === 0 && rootIndices.length === 0) return []; // мутировать нечего
 
+    const symbolIndices = tokens.map((t, i) => t.type === 'symbol' ? i : -1).filter(i => i !== -1);
     const syncStep = getArithmeticStep(tokens);
     const results = new Set();
     const maxAttempts = count * 15;
@@ -162,9 +255,14 @@ function generateDistractorStrings(tokens, correctString, count, decimalMode) {
     // Если числа связаны фиксированной разницей ("14 и 15") — трогать их
     // по отдельности нельзя, иначе связь развалится и получится не дистрактор,
     // а бессмыслица вроде "14 и -15". В этом случае годится только синхронный сдвиг.
-    const techniques = (syncStep !== null)
-        ? ['syncShift']
-        : ['independentShift', 'negate'];
+    const techniques = [];
+    if (numberIndices.length > 0) {
+        techniques.push(syncStep !== null ? 'syncShift' : 'independentShift');
+    }
+    // скобки/знаки неравенства можно путать независимо от того, как мы обходимся с числами
+    if (symbolIndices.length > 0) techniques.push('swapSymbol');
+    // число под корнем меняем целиком, пересобирая весь корень
+    if (rootIndices.length > 0) techniques.push('shiftRoot');
 
     let techPointer = 0;
     while (results.size < count && attempts < maxAttempts) {
@@ -177,6 +275,10 @@ function generateDistractorStrings(tokens, correctString, count, decimalMode) {
             mutated = mutateShiftAll(tokens, decimalMode);
         } else if (technique === 'independentShift') {
             mutated = mutateShiftOne(tokens, numberIndices, decimalMode);
+        } else if (technique === 'swapSymbol') {
+            mutated = mutateSwapSymbol(tokens, symbolIndices);
+        } else if (technique === 'shiftRoot') {
+            mutated = mutateShiftRoot(tokens, rootIndices, decimalMode);
         } else if (technique === 'negate') {
             mutated = mutateNegate(tokens, numberIndices);
         }
@@ -217,10 +319,31 @@ function buildOptionsFields(correctAnswer, optionsCount, decimalMode) {
    Генерация раскладки для типа "details"
    =================================================== */
 
+// Для деталей корень нельзя оставлять неделимым куском (как в options) — раскладываем
+// его на два кусочка: пустой плейсхолдер-корень (сам синтаксис красиво не отрисовать,
+// поэтому лучше пусто, чем сырой код) и число под корнем как обычное число — чтобы
+// к нему подбиралась приманка на общих основаниях
+function splitRootTokensForDetails(tokens) {
+    const result = [];
+    tokens.forEach(t => {
+        if (t.type === 'root') {
+            result.push({ type: 'rootMark', value: '\\sqrt{⠀}' });
+            const numStr = String(t.num);
+            const dotIdx = numStr.indexOf('.');
+            const decimals = dotIdx === -1 ? 0 : numStr.length - dotIdx - 1;
+            result.push({ type: 'number', value: numStr, num: t.num, separator: '.', decimals });
+        } else {
+            result.push(t);
+        }
+    });
+    return result;
+}
+
 // Может ли ответ вообще быть "собран из деталей": нужно минимум 2 осмысленных куска
 // (иначе, как с голым "5", разбирать нечего — это ровно один кусок).
 function canBeDetails(correctAnswer) {
-    const tokens = tokenizeAnswer(correctAnswer).filter(t => t.value.trim() !== '' || t.type === 'number');
+    const tokens = splitRootTokensForDetails(tokenizeAnswer(correctAnswer))
+        .filter(t => t.type === 'number' || t.type === 'rootMark' || t.value !== '');
     return tokens.length > 1;
 }
 
@@ -229,31 +352,46 @@ function canBeDetails(correctAnswer) {
 const MAX_DETAILS = 9;
 
 function buildDetailsFields(correctAnswer, decimalMode) {
-    const rawTokens = tokenizeAnswer(correctAnswer);
-    // осмысленные куски: непустой текст или любое число
-    const tokens = rawTokens.filter(t => t.type === 'number' || t.value !== '');
+    const rawTokens = splitRootTokensForDetails(tokenizeAnswer(correctAnswer));
+    // осмысленные куски: непустой текст, любое число, либо пустой плейсхолдер-корень
+    const tokens = rawTokens.filter(t => t.type === 'number' || t.type === 'rootMark' || t.value !== '');
     if (tokens.length <= 1) return null;
 
     const numberIndices = tokens.map((t, i) => t.type === 'number' ? i : -1).filter(i => i !== -1);
+    const symbolIndices = tokens.map((t, i) => t.type === 'symbol' ? i : -1).filter(i => i !== -1);
 
     // Правильные кусочки — все токены по порядку
     const pieces = tokens.map((t, originalOrder) => ({ text: t.value, isCorrect: true, originalOrder }));
 
-    // На каждое число пытаемся добавить один кусок-приманку (пока не упёрлись в лимит)
-    const usedDecoyValues = new Set();
+    // На каждое число добавляем до двух приманок — сдвиг и смену знака, если применимо
+    // (одной приманки маловато, особенно когда в ответе всего одно число). Приманка не
+    // должна совпадать ни с одним уже имеющимся кусочком — включая другие правильные
+    // (иначе, например, приманка для "4" может случайно вылезти как ещё одна "5").
+    const usedDecoyValues = new Set(pieces.map(p => p.text));
     for (const idx of numberIndices) {
+        const token = tokens[idx];
+        const candidates = [];
+        if (token.num !== 0) candidates.push(-token.num);                                  // смена знака
+        candidates.push(token.num + randomDeltaForToken(token, decimalMode));               // сдвиг №1
+        candidates.push(token.num + randomDeltaForToken(token, decimalMode));               // сдвиг №2 (другое число)
+
+        let added = 0;
+        for (const decoyNum of candidates) {
+            if (pieces.length >= MAX_DETAILS || added >= 2) break;
+            const decoyText = formatNumber(decoyNum, token);
+            if (usedDecoyValues.has(decoyText)) continue;
+            usedDecoyValues.add(decoyText);
+            pieces.push({ text: decoyText, isCorrect: false });
+            added++;
+        }
+    }
+
+    // На каждую скобку/знак неравенства тоже добавляем противоположную версию-приманку
+    for (const idx of symbolIndices) {
         if (pieces.length >= MAX_DETAILS) break;
         const token = tokens[idx];
-        const technique = Math.random() < 0.5 ? 'negate' : 'shift';
-        let decoyNum = null;
-        if (technique === 'negate' && token.num !== 0) {
-            decoyNum = -token.num;
-        }
-        if (decoyNum === null) {
-            decoyNum = token.num + randomDeltaForToken(token, decimalMode);
-        }
-        const decoyText = formatNumber(decoyNum, token);
-        if (decoyText === token.value || usedDecoyValues.has(decoyText)) continue;
+        const decoyText = SWAP_MAP[token.value];
+        if (!decoyText || decoyText === token.value || usedDecoyValues.has(decoyText)) continue;
         usedDecoyValues.add(decoyText);
         pieces.push({ text: decoyText, isCorrect: false });
     }
@@ -287,9 +425,9 @@ function buildDetailsFields(correctAnswer, decimalMode) {
 // Для одного задания определяет, какие типы ему в принципе доступны
 function getAvailableTypes(correctAnswer) {
     const tokens = tokenizeAnswer(correctAnswer);
-    const hasNumbers = tokens.some(t => t.type === 'number');
+    const hasMutableNumber = tokens.some(t => t.type === 'number' || t.type === 'root');
     const types = ['input'];
-    if (hasNumbers) types.push('options');
+    if (hasMutableNumber) types.push('options');
     if (canBeDetails(correctAnswer)) types.push('details');
     return types;
 }
@@ -324,38 +462,77 @@ function planLessonTypes(tasks) {
     // если весь урок состоит из десятичных дробей — дистракторы тоже будут дробями
     const decimalMode = isLessonAllDecimal(inputTasks);
 
-    const base = Math.floor(n / 3);
-    const quotas = { input: base, options: base, details: base };
-    // остаток раскидываем по input — самый безопасный вариант по умолчанию
-    quotas.input += n - (base * 3);
-
     // считаем доступные типы для каждого задания заранее
     const meta = inputTasks.map(task => ({
         task,
         available: getAvailableTypes(task.correctAnswer)
     }));
 
-    // сначала обрабатываем самые "зажатые" задания (у которых меньше выбора)
+    // перемешиваем порядок — иначе при небольших квотах всегда конвертируются
+    // одни и те же "первые по счёту" задания урока, а остальные остаются input
+    for (let i = meta.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [meta[i], meta[j]] = [meta[j], meta[i]];
+    }
+    // и только после перемешивания — самые "зажатые" задания вперёд, чтобы они
+    // не остались без своего единственного варианта из-за более гибких соседей
     meta.sort((a, b) => a.available.length - b.available.length);
 
-    meta.forEach(({ task, available }) => {
-        // выбираем среди доступных тот тип, где ещё есть квота, предпочитая
-        // не-input варианты (раз уж задание способно на разнообразие)
+    // input — явное меньшинство: на нём базовая треть без довеска. Остаток от
+    // деления уходит не в input, а в options (и, если остаток больше 1, в details) —
+    // например для 7 заданий получится 3 options, 2 details, 2 input, а не наоборот
+    const base = Math.floor(n / 3);
+    const remainder = n % 3;
+    const quotas = {
+        input: base,
+        options: base + (remainder >= 1 ? 1 : 0),
+        details: base + (remainder >= 2 ? 1 : 0)
+    };
+
+    // если заданий, реально способных стать details, меньше, чем задумано в квоте —
+    // не резервируем под них место впустую, а сразу отдаём разницу под options
+    const eligibleDetailsCount = meta.filter(m => m.available.includes('details')).length;
+    if (quotas.details > eligibleDetailsCount) {
+        quotas.options += quotas.details - eligibleDetailsCount;
+        quotas.details = eligibleDetailsCount;
+    }
+
+    const leftovers = []; // задания, которым в первый проход не хватило квоты
+
+    meta.forEach(item => {
+        const { task, available } = item;
         const preferenceOrder = ['options', 'details', 'input'].filter(t => available.includes(t));
-        let chosen = preferenceOrder.find(t => quotas[t] > 0);
-        if (!chosen) chosen = 'input'; // квоты кончились — оставляем как есть
+        const chosen = preferenceOrder.find(t => quotas[t] > 0);
+        if (!chosen) { leftovers.push(item); return; } // пока квоты нет — попробуем во втором проходе
 
         if (chosen === 'options') {
             const fields = buildOptionsFields(task.correctAnswer, 4, decimalMode);
             if (fields) { Object.assign(task, fields); quotas.options--; return; }
-            chosen = 'details'; // не вышло (не должно случаться, раз available это разрешал) — пробуем запасной вариант
         }
         if (chosen === 'details') {
             const fields = buildDetailsFields(task.correctAnswer, decimalMode);
             if (fields) { Object.assign(task, fields); quotas.details--; return; }
         }
-        // остаётся как input — ничего не меняем, просто "тратим" квоту input, если она была
-        if (quotas.input > 0) quotas.input--;
+        if (chosen === 'input' && quotas.input > 0) { quotas.input--; return; }
+        leftovers.push(item);
+    });
+
+    // квота, для которой не нашлось подходящих заданий (например, details, когда все
+    // оставшиеся ответы для него не годятся), не должна пропадать зря — отдаём её
+    // тем, кто остался без типа, предпочитая options
+    leftovers.forEach(({ task, available }) => {
+        const preferenceOrder = ['options', 'details'].filter(t => available.includes(t));
+        const chosen = preferenceOrder.find(t => quotas[t] > 0);
+
+        if (chosen === 'options') {
+            const fields = buildOptionsFields(task.correctAnswer, 4, decimalMode);
+            if (fields) { Object.assign(task, fields); quotas.options--; return; }
+        }
+        if (chosen === 'details') {
+            const fields = buildDetailsFields(task.correctAnswer, decimalMode);
+            if (fields) { Object.assign(task, fields); quotas.details--; return; }
+        }
+        // свободной квоты больше нигде нет — задание остаётся input
     });
 
     return tasks;
