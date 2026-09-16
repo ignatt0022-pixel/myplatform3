@@ -733,8 +733,40 @@ function planLessonTypes(tasks) {
    Точка входа
    =================================================== */
 
+function isNotInputTask(task) {
+    return !!task && typeof task.type === 'string' && task.type.trim().toLowerCase() === 'notinput';
+}
+
+// Задания с type:"notinput" ОБЯЗАНЫ стать options или details — input для них
+// исключён совсем. В отличие от обычных input-заданий, они не участвуют в квотах
+// урока (квоты существуют, чтобы часть заданий сознательно осталась input — а тут
+// такого исхода в принципе не бывает), поэтому обрабатываются отдельным проходом.
+function forceConvertNotInputTasks(tasks) {
+    const notInputTasks = tasks.filter(isNotInputTask);
+    if (notInputTasks.length === 0) return;
+    const decimalMode = isLessonAllDecimal(notInputTasks);
+
+    notInputTasks.forEach(task => {
+        const available = getAvailableTypes(task.correctAnswer).filter(t => t !== 'input');
+        if (available.length === 0) return; // см. предупреждение в ответе — крайний случай
+
+        // порядок предпочтения перемешиваем, чтобы не всегда доставался один и тот же тип
+        const order = Math.random() < 0.5 ? ['options', 'details'] : ['details', 'options'];
+        for (const type of order) {
+            if (!available.includes(type)) continue;
+            const fields = type === 'options'
+                ? buildOptionsFields(task.correctAnswer, 4, decimalMode)
+                : buildDetailsFields(task.correctAnswer, decimalMode);
+            if (fields) { Object.assign(task, fields); return; }
+        }
+    });
+}
+
 // Вызывается при открытии урока: tasks — массив заданий урока (как они лежат в JSON).
-// theory-задания не трогаются вообще, задания с типом, отличным от input, тоже не трогаются.
+// theory-задания не трогаются вообще. input — через квоты (planLessonTypes).
+// notinput — принудительно в options/details (forceConvertNotInputTasks).
 function autoGenerateLesson(tasks) {
-    return planLessonTypes(tasks);
+    planLessonTypes(tasks);
+    forceConvertNotInputTasks(tasks);
+    return tasks;
 }
