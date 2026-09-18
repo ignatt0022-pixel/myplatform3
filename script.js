@@ -3366,7 +3366,7 @@ async function attemptAuthRequest(action, email, password) {
     const res = await fetch("https://d5dkes6tf8o0uff54egi.4b4k4pg5.apigw.yandexcloud.net/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, login: email, password })
+        body: JSON.stringify({ action, login: email, password, turnstileToken })
     });
     const data = await res.json();
     return { res, data };
