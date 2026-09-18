@@ -3347,6 +3347,17 @@ if (isRegisterMode && !document.getElementById('auth-consent-checkbox').checked)
     authSubmitBtn.disabled = false;
     return;
     }
+    let turnstileToken = "";
+if (isRegisterMode) {
+    turnstileToken = (typeof turnstile !== "undefined") ? turnstile.getResponse() : "";
+    if (!turnstileToken) {
+        authError.textContent = "Подтвердите, что вы не робот";
+        authError.style.display = "block";
+        authSubmitBtn.classList.remove("loading");
+        authSubmitBtn.disabled = false;
+        return;
+    }
+}
 
 const { signInWithCustomToken } =
     await import("https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js");
